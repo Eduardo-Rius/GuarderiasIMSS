@@ -2,8 +2,11 @@ import React from 'react';
 import { FilePlus, Search, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { useUser } from '../context/UserContext';
+
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { profile } = useUser();
 
   const cards = [
     {
@@ -22,14 +25,14 @@ const Dashboard = () => {
       title: 'Ver Planeaciones',
       description: 'Revisa el historial de planeaciones creadas y sus estados de aprobación.',
       icon: <History className="text-imss-green-dark" size={32} />,
-      path: '/preview'
+      path: '/planeaciones'
     }
   ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">¡Bienvenido, Usuario!</h1>
+        <h1 className="text-3xl font-bold text-gray-800">¡Bienvenido, {profile?.nombre || 'Usuario'}!</h1>
         <p className="text-gray-600 mt-2">Selecciona una acción para comenzar tu jornada pedagógica.</p>
       </div>
 

@@ -14,7 +14,8 @@ import {
   CheckCircle, 
   Clock,
   Filter,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
 import { useUser } from '../context/UserContext';
