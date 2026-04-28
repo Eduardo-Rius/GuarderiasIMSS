@@ -9,19 +9,19 @@ const Dashboard = () => {
     {
       title: 'Crear Planeación',
       description: 'Inicia un nuevo formato pedagógico siguiendo la normativa vigente.',
-      icon: <FilePlus className="text-[#005C46]" size={32} />,
+      icon: <FilePlus className="text-imss-green-dark" size={32} />,
       path: '/planeacion'
     },
     {
       title: 'Consultar Normativa',
       description: 'Accede rápidamente a los lineamientos y reglamentos de las Guarderías IMSS.',
-      icon: <Search className="text-[#005C46]" size={32} />,
+      icon: <Search className="text-imss-green-dark" size={32} />,
       path: '/chat'
     },
     {
       title: 'Ver Planeaciones',
       description: 'Revisa el historial de planeaciones creadas y sus estados de aprobación.',
-      icon: <History className="text-[#005C46]" size={32} />,
+      icon: <History className="text-imss-green-dark" size={32} />,
       path: '/preview'
     }
   ];
@@ -40,10 +40,10 @@ const Dashboard = () => {
             onClick={() => navigate(card.path)}
             className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
           >
-            <div className="bg-green-50 w-16 h-16 rounded-lg flex items-center justify-center mb-6 group-hover:bg-[#005C46] group-hover:text-white transition-colors">
+            <div className="bg-imss-bg w-16 h-16 rounded-lg flex items-center justify-center mb-6 group-hover:bg-imss-green-dark group-hover:text-white transition-colors">
               {card.icon}
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-3">{card.title}</h2>
+            <h2 className="text-xl font-bold text-imss-green-dark mb-3">{card.title}</h2>
             <p className="text-gray-600 leading-relaxed">
               {card.description}
             </p>
