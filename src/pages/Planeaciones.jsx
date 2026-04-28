@@ -73,8 +73,14 @@ const Planeaciones = () => {
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-imss-green-dark">Mis Planeaciones</h1>
-          <p className="text-gray-500">Gestiona y consulta tus formatos oficiales generados.</p>
+          <h1 className="text-2xl font-bold text-imss-green-dark">
+            {profile?.rol === 'docente' ? 'Mis Planeaciones' : 
+             profile?.rol === 'directora' ? 'Planeaciones de mi Guardería' : 
+             'Planeaciones Nacionales'}
+          </h1>
+          <p className="text-gray-500">
+            {profile?.rol === 'supervisor' ? 'Consulta global de planeaciones pedagógicas.' : 'Gestiona y consulta tus formatos oficiales generados.'}
+          </p>
         </div>
         {profile?.rol !== 'supervisor' && (
           <button 
@@ -152,26 +158,46 @@ const Planeaciones = () => {
                 <div className="grid grid-cols-2 gap-y-3 mb-6">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar size={16} className="text-imss-green-medium" />
-                    <span>{p.fechaInicio || p.periodoInicio} - {p.fechaFin || p.periodoFin}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock size={16} className="text-imss-green-medium" />
-                    <span>{p.turno}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 col-span-2">
-                    <div className="w-8 h-8 rounded-full bg-imss-green-dark flex items-center justify-center text-white text-[10px] font-bold">
-                      {(p.responsableDocente || p.responsable || "U").split(' ').filter(Boolean).map(n => n[0]).join('')}
+                    <div className="flex flex-col">
+                      <p className="font-bold text-gray-800">Sala: {p.salaGrupo || p.sala}</p>
+                      <p className="text-xs text-imss-green-dark font-medium">Guardería: {p.guarderiaNo} {p.guarderiaNombre ? `- ${p.guarderiaNombre}` : ''}</p>
                     </div>
-                    <span className="font-medium uppercase truncate">{p.responsableDocente || p.responsable}</span>
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-1 ${
+                    p.estado === 'aprobado' ? 'bg-green-100 text-green-700' :
+                    p.estado === 'en_revision' ? 'bg-amber-100 text-amber-700' :
+                    p.estado === 'rechazado' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {p.estado === 'aprobado' && <CheckCircle size={12} />}
+                    {p.estado === 'rechazado' && <AlertCircle size={12} />}
+                    {p.estado === 'en_revision' ? 'En Revisión' : (p.estado || 'borrador')}
                   </div>
                 </div>
 
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar size={16} className="text-gray-400" />
+                    <span>Periodo: {p.fechaInicio || p.periodoInicio} al {p.fechaFin || p.periodoFin}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FileText size={16} className="text-gray-400" />
+                    <span>Responsable: {p.responsableDocente || p.responsable}</span>
+                  </div>
+                  {p.estado === 'rechazado' && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-700 font-bold flex items-center gap-1 uppercase">
+                      <AlertCircle size={12} />
+                      Con observaciones de la dirección
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                  <div className="flex flex-col">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Creado: {p.createdAt.toLocaleDateString()}</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Creado: {p.createdAt instanceof Date ? p.createdAt.toLocaleDateString() : 'Desconocido'}</p>
                     <div className="flex items-center gap-1 text-[10px] text-imss-green-medium font-bold uppercase">
                       <Clock size={12} />
-                      Actualizado: {p.updatedAt ? p.updatedAt.toLocaleDateString() : 'Sin actualización'}
+                      Actualizado: {p.updatedAt ? (p.updatedAt instanceof Date ? p.updatedAt.toLocaleDateString() : p.updatedAt) : 'Sin actualización'}
                     </div>
                   </div>
                   <div className="flex gap-2">

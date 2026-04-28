@@ -23,9 +23,53 @@ import {
 } from 'lucide-react';
 import imssLogo from '../assets/imss_logo.svg';
 import LogoIMSS from '../components/LogoIMSS';
-import { guardarPlaneacion } from '../services/planeacionService';
+import { guardarPlaneacion, actualizarEstadoConAuditoria } from '../services/planeacionService';
 import { useUser } from '../context/UserContext';
 
+
+const RejectionModal = ({ onClose, onConfirm }) => {
+  const [motivo, setMotivo] = useState('');
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-red-100 animate-in zoom-in-95 duration-200">
+        <div className="p-6 bg-red-50 border-b border-red-100 flex items-center gap-3">
+          <div className="p-2 bg-red-100 rounded-lg text-red-600">
+            <ShieldAlert size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-red-800">Rechazar Planeación</h3>
+            <p className="text-xs text-red-600">Esta acción notificará al docente para su corrección.</p>
+          </div>
+        </div>
+        <div className="p-6">
+          <label className="block text-sm font-bold text-gray-700 mb-2">Motivo del rechazo *</label>
+          <textarea 
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Describa brevemente por qué se rechaza la planeación y qué debe corregirse..."
+            className="w-full h-32 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-sm resize-none"
+          />
+        </div>
+        <div className="p-6 bg-gray-50 flex gap-3">
+          <button 
+            onClick={onClose}
+            className="flex-1 py-3 px-4 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition"
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={() => onConfirm(motivo)}
+            disabled={!motivo.trim()}
+            className="flex-1 py-3 px-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Confirmar Rechazo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const VistaPrevia = () => {
   const location = useLocation();
@@ -37,6 +81,10 @@ const VistaPrevia = () => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const documentRef = useRef(null);
+  
+  // Estados para Modal de Rechazo
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
 
   useEffect(() => {
     if (location.state) {
@@ -300,18 +348,45 @@ const VistaPrevia = () => {
         type: 'success' 
       });
     } catch (error) {
-      setMessage({ 
-        text: `Error de Firebase: ${error.message}.`, 
-        type: 'error' 
-      });
+      console.error("Error al persistir cambios:", error);
+      setMessage({ text: `Error de Firebase: ${error.message}`, type: 'error' });
     } finally {
       setSaving(false);
       setTimeout(() => setMessage({ text: '', type: '' }), 10000);
     }
   };
 
+  const handleUpdateStatus = async (nuevoEstado, motivo = "") => {
+    setSaving(true);
+    try {
+      await actualizarEstadoConAuditoria(docData.id, nuevoEstado, profile, "", motivo);
+      setDocData(prev => ({ 
+        ...prev, 
+        estado: nuevoEstado, 
+        motivoRechazo: nuevoEstado === 'rechazado' ? motivo : prev.motivoRechazo,
+        updatedAt: new Date()
+      }));
+      setMessage({ 
+        text: `Estado actualizado a ${nuevoEstado.toUpperCase()}`, 
+        type: 'success' 
+      });
+      setShowRejectModal(false);
+    } catch (error) {
+      setMessage({ text: `Error: ${error.message}`, type: 'error' });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setMessage({ text: '', type: '' }), 4000);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen pb-20">
+      {showRejectModal && (
+        <RejectionModal 
+          onClose={() => setShowRejectModal(false)} 
+          onConfirm={(motivo) => handleUpdateStatus('rechazado', motivo)} 
+        />
+      )}
       {/* Barra de Herramientas Superior */}
       <div className="max-w-5xl mx-auto mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <button 
@@ -371,7 +446,7 @@ const VistaPrevia = () => {
           {/* Botón de Aprobación - Solo Directora */}
           {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
             <button 
-              onClick={() => handlePersist('aprobado')}
+              onClick={() => handleUpdateStatus('aprobado')}
               disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-imss-green-medium text-white rounded-lg hover:bg-imss-green-dark transition shadow-md disabled:opacity-50"
             >
@@ -383,7 +458,7 @@ const VistaPrevia = () => {
           {/* Botón de Rechazo - Solo Directora */}
           {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
             <button 
-              onClick={() => handlePersist('rechazado')}
+              onClick={() => setShowRejectModal(true)}
               disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-md disabled:opacity-50"
             >
@@ -414,6 +489,23 @@ const VistaPrevia = () => {
         }`}>
           {message.type === 'success' ? <CheckCircle size={20} /> : <ShieldAlert size={20} />}
           <p className="font-bold">{message.text}</p>
+        </div>
+      )}
+
+      {/* Motivo de Rechazo (Visible para Docente) */}
+      {docData.estado === 'rechazado' && docData.motivoRechazo && (
+        <div className="max-w-5xl mx-auto mb-6 bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-md animate-in slide-in-from-left duration-300">
+          <div className="flex items-center gap-3 mb-2 text-red-700">
+            <AlertCircle size={24} />
+            <h3 className="text-lg font-bold">Observaciones de la Dirección</h3>
+          </div>
+          <p className="text-gray-800 bg-white/50 p-4 rounded-lg border border-red-100 italic">
+            "{docData.motivoRechazo}"
+          </p>
+          <div className="mt-3 flex items-center justify-between text-xs text-red-600 font-bold uppercase">
+            <span>Revisado por: {docData.rechazadoPorNombre || 'Directora'}</span>
+            <span>Fecha: {docData.fechaRechazo ? (docData.fechaRechazo.toDate ? docData.fechaRechazo.toDate().toLocaleString() : new Date(docData.fechaRechazo).toLocaleString()) : ''}</span>
+          </div>
         </div>
       )}
 
@@ -458,7 +550,7 @@ const VistaPrevia = () => {
             {docData.updatedAt && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-600">
                 <Clock size={12} />
-                <span>Actualizado: {docData.updatedAt ? (docData.updatedAt.toDate ? docData.updatedAt.toDate().toLocaleDateString() : new Date(docData.updatedAt).toLocaleDateString()) : 'Sin actualización'}</span>
+                <span>Actualizado: {docData.updatedAt ? (docData.updatedAt instanceof Date ? docData.updatedAt.toLocaleDateString() : (docData.updatedAt.toDate ? docData.updatedAt.toDate().toLocaleDateString() : new Date(docData.updatedAt).toLocaleDateString())) : 'Sin actualización'}</span>
               </div>
             )}
           </div>

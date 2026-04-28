@@ -41,6 +41,17 @@ const PlaneacionNueva = () => {
     notasSeguridad: ''
   });
 
+  React.useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        guarderiaNo: profile.guarderiaId || '',
+        responsableDocente: profile.nombre || '',
+        tipoGuarderia: profile.tipoGuarderia || 'Directa'
+      }));
+    }
+  }, [profile]);
+
   const salas = [
     'Lactantes A', 'Lactantes B', 'Lactantes C',
     'Maternal A', 'Maternal B', 'Maternal C',
@@ -154,19 +165,20 @@ const PlaneacionNueva = () => {
                 type="text" 
                 name="guarderiaNo"
                 value={formData.guarderiaNo}
-                onChange={handleInputChange}
-                className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-imss-green-dark outline-none ${errors.guarderiaNo ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Ej. 001"
+                disabled={true}
+                className="w-full p-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md outline-none cursor-not-allowed font-bold"
               />
-              {errors.guarderiaNo && <span className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.guarderiaNo}</span>}
+              {profile?.guarderiaNombre && (
+                <p className="text-[10px] text-imss-green-dark font-bold mt-1 uppercase">Guardería: {profile.guarderiaNombre}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Guardería</label>
               <select 
                 name="tipoGuarderia"
                 value={formData.tipoGuarderia}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-imss-green-dark outline-none"
+                disabled={true}
+                className="w-full p-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md outline-none cursor-not-allowed"
               >
                 <option value="Directa">Directa</option>
                 <option value="Prestación indirecta">Prestación indirecta</option>
@@ -225,11 +237,10 @@ const PlaneacionNueva = () => {
                 type="text" 
                 name="responsableDocente"
                 value={formData.responsableDocente}
-                onChange={handleInputChange}
-                className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-imss-green-dark outline-none ${errors.responsableDocente ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Nombre completo"
+                disabled={true}
+                className="w-full p-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md outline-none cursor-not-allowed font-bold"
               />
-              {errors.responsableDocente && <span className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.responsableDocente}</span>}
+              <p className="text-[10px] text-gray-400 mt-1 italic">Vínculado automáticamente a su perfil</p>
             </div>
           </div>
         </div>

@@ -9,14 +9,12 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  arrayUnion
 } from 'firebase/firestore';
 
 /**
  * Guarda o actualiza una planeación en Firestore.
- * @param {Object} data - Los datos de la planeación.
- * @param {string} estado - 'borrador', 'en_revision', 'aprobado', 'rechazado'.
- * @param {Object} userProfile - El perfil del usuario (rol, guarderiaId, etc).
  */
 export const guardarPlaneacion = async (data, estado = 'borrador', userProfile = null) => {
   const user = auth.currentUser;
@@ -25,48 +23,71 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
   try {
     const docData = {
       // Datos Generales
-      guarderiaNo: data.guarderiaNo || data.guarderia || "",
-      tipoGuarderia: data.tipoGuarderia || "",
+      guarderiaNo: userProfile?.guarderiaId || data.guarderiaNo || "",
+      guarderiaNombre: userProfile?.guarderiaNombre || data.guarderiaNombre || "",
+      tipoGuarderia: userProfile?.tipoGuarderia || data.tipoGuarderia || "Directa",
       salaGrupo: data.salaGrupo || data.sala || "",
       fechaInicio: data.fechaInicio || data.periodoInicio || "",
       fechaFin: data.fechaFin || data.periodoFin || "",
       turno: data.turno || "",
-      responsableDocente: data.responsableDocente || data.responsable || "",
+      responsableDocente: userProfile?.nombre || data.responsableDocente || "",
       titulo: data.titulo || "Planeación Pedagógica",
       clave: data.clave || "DPES/CSG/P-01",
       
       // Contexto
-      numNinas: data.numNinas || data.numeroNinas || 0,
-      numNinos: data.numNinos || data.numeroNinos || 0,
-      rangoEdad: data.rangoEdad || data.edad || "",
-      hayDiscapacidad: data.hayDiscapacidad || data.discapacidad || "No",
-      descripcionNecesidades: data.descripcionNecesidades || data.necesidades || "",
-      observaciones: data.observaciones || data.observacionesGrupo || "",
+      numNinas: data.numNinas || 0,
+      numNinos: data.numNinos || 0,
+      rangoEdad: data.rangoEdad || "",
+      hayDiscapacidad: data.hayDiscapacidad || "No",
+      descripcionNecesidades: data.descripcionNecesidades || "",
+      observaciones: data.observaciones || "",
       
       // Pedagogía
       referentes: data.referentes || [],
-      actividadesDetalladas: data.actividadesDetalladas || data.suggestions?.actividades || data.actividades || [],
-      evaluacionCriterios: data.evaluacionCriterios || data.suggestions?.evaluacionCriterios || [],
-      complementarias: data.complementarias || data.actividadesComplementarias || [],
-      suggestions: data.suggestions || {},
+      actividadesDetalladas: data.actividadesDetalladas || [],
+      evaluacionCriterios: data.evaluacionCriterios || [],
+      complementarias: data.complementarias || [],
       
       // Metadatos
       userId: user.uid,
       userEmail: user.email,
-      creadoPor: userProfile?.nombre || user.displayName || user.email,
-      creadoPorId: user.uid,
-      guarderiaId: userProfile?.guarderiaId || data.guarderiaId || "GDR-001",
+      creadoPorUid: user.uid,
+      creadoPorNombre: userProfile?.nombre || user.displayName || user.email,
+      creadoPorEmail: user.email,
+      guarderiaId: userProfile?.guarderiaId || "GDR-001",
       estado: estado,
       updatedAt: serverTimestamp()
     };
 
     if (data.id) {
-      // Actualizar existente
+      // Si el estado cambia, agregamos al historial
+      if (data.estado && data.estado !== estado) {
+        docData.historialEstados = arrayUnion({
+          estadoAnterior: data.estado,
+          estadoNuevo: estado,
+          fecha: new Date().toISOString(),
+          usuarioUid: user.uid,
+          usuarioNombre: userProfile?.nombre || user.email,
+          usuarioEmail: user.email,
+          rol: userProfile?.rol || 'docente',
+          comentario: "Actualización de documento"
+        });
+      }
       await updateDoc(doc(db, "planeaciones", data.id), docData);
       return data.id;
     } else {
       // Crear nuevo
       docData.createdAt = serverTimestamp();
+      docData.historialEstados = [{
+        estadoAnterior: 'N/A',
+        estadoNuevo: 'borrador',
+        fecha: new Date().toISOString(),
+        usuarioUid: user.uid,
+        usuarioNombre: userProfile?.nombre || user.email,
+        usuarioEmail: user.email,
+        rol: userProfile?.rol || 'docente',
+        comentario: "Creación de planeación"
+      }];
       const docRef = await addDoc(collection(db, "planeaciones"), docData);
       return docRef.id;
     }
@@ -77,17 +98,44 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
 };
 
 /**
- * Actualiza solo el estado de una planeación.
+ * Actualiza el estado con auditoría y historial.
  */
-export const actualizarEstadoPlaneacion = async (id, nuevoEstado) => {
+export const actualizarEstadoConAuditoria = async (id, nuevoEstado, userProfile, comentario = "", motivoRechazo = "") => {
   try {
     const docRef = doc(db, "planeaciones", id);
-    await updateDoc(docRef, { 
+    const updateData = {
       estado: nuevoEstado,
-      updatedAt: serverTimestamp()
-    });
+      updatedAt: serverTimestamp(),
+      historialEstados: arrayUnion({
+        estadoAnterior: "desconocido", 
+        estadoNuevo: nuevoEstado,
+        fecha: new Date().toISOString(),
+        usuarioUid: userProfile.uid,
+        usuarioNombre: userProfile.nombre,
+        usuarioEmail: userProfile.email,
+        rol: userProfile.rol,
+        comentario: comentario || (nuevoEstado === 'rechazado' ? `Rechazado: ${motivoRechazo}` : `Cambio a ${nuevoEstado}`)
+      })
+    };
+
+    if (nuevoEstado === 'aprobado') {
+      updateData.aprobadoPorUid = userProfile.uid;
+      updateData.aprobadoPorNombre = userProfile.nombre;
+      updateData.aprobadoPorEmail = userProfile.email;
+      updateData.fechaAprobacion = serverTimestamp();
+    }
+
+    if (nuevoEstado === 'rechazado') {
+      updateData.rechazadoPorUid = userProfile.uid;
+      updateData.rechazadoPorNombre = userProfile.nombre;
+      updateData.rechazadoPorEmail = userProfile.email;
+      updateData.fechaRechazo = serverTimestamp();
+      updateData.motivoRechazo = motivoRechazo;
+    }
+
+    await updateDoc(docRef, updateData);
   } catch (error) {
-    console.error("Error al actualizar estado:", error);
+    console.error("Error al actualizar estado con auditoría:", error);
     throw error;
   }
 };

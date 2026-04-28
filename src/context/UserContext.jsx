@@ -15,7 +15,7 @@ export const UserProvider = ({ children }) => {
       setUser(currentUser);
       
       if (currentUser) {
-        // Buscar o crear perfil en Firestore
+        // Buscar perfil en Firestore
         try {
           const userDocRef = doc(db, 'usuarios', currentUser.uid);
           const userDoc = await getDoc(userDocRef);
@@ -23,20 +23,14 @@ export const UserProvider = ({ children }) => {
           if (userDoc.exists()) {
             setProfile(userDoc.data());
           } else {
-            // Crear perfil por defecto como docente
-            const newProfile = {
-              uid: currentUser.uid,
-              nombre: currentUser.displayName || currentUser.email.split('@')[0],
-              email: currentUser.email,
-              rol: 'docente',
-              guarderiaId: 'GDR-001', // Por ahora default
-              createdAt: serverTimestamp()
-            };
-            await setDoc(userDocRef, newProfile);
-            setProfile(newProfile);
+            // No crear automáticamente en producción. 
+            // Para que el usuario pueda probar el Admin, dejaremos que entre solo si es la primera vez o si lo indicamos,
+            // pero para seguir la instrucción estricta, notificaremos que no tiene perfil.
+            setProfile(null);
           }
         } catch (error) {
           console.error("Error al gestionar perfil de usuario:", error);
+          setProfile(null);
         }
       } else {
         setProfile(null);
