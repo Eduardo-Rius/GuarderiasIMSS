@@ -389,7 +389,7 @@ const VistaPrevia = () => {
             </button>
           )}
 
-          <button onClick={handleExportAlert} className="flex items-center gap-2 px-4 py-2 bg-[#bd965c] text-white font-bold rounded-lg hover:bg-[#a68450] transition shadow-sm">
+          <button onClick={handleExportAlert} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#bd965c] text-[#bd965c] font-bold rounded-lg hover:bg-yellow-50 transition shadow-sm">
             <FileDown size={18} />
             Word
           </button>
