@@ -123,7 +123,8 @@ export const getPlaneaciones = async (userProfile) => {
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || null
     })).sort((a, b) => b.createdAt - a.createdAt); // Ordenar en memoria por ahora
   } catch (error) {
     console.error("Error al obtener planeaciones:", error);

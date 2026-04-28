@@ -458,7 +458,7 @@ const VistaPrevia = () => {
             {docData.updatedAt && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-600">
                 <Clock size={12} />
-                <span>Actualizado: {docData.updatedAt.toDate ? docData.updatedAt.toDate().toLocaleDateString() : new Date(docData.updatedAt).toLocaleDateString()}</span>
+                <span>Actualizado: {docData.updatedAt ? (docData.updatedAt.toDate ? docData.updatedAt.toDate().toLocaleDateString() : new Date(docData.updatedAt).toLocaleDateString()) : 'Sin actualización'}</span>
               </div>
             )}
           </div>

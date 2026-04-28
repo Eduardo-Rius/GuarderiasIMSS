@@ -169,9 +169,10 @@ const Planeaciones = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div className="flex flex-col">
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Creado: {p.createdAt.toLocaleDateString()}</p>
-                    {p.updatedAt && (
-                      <p className="text-[10px] text-imss-green-medium font-bold uppercase">Actualizado: {p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleDateString() : new Date(p.updatedAt).toLocaleDateString()}</p>
-                    )}
+                    <div className="flex items-center gap-1 text-[10px] text-imss-green-medium font-bold uppercase">
+                      <Clock size={12} />
+                      Actualizado: {p.updatedAt ? p.updatedAt.toLocaleDateString() : 'Sin actualización'}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button 
