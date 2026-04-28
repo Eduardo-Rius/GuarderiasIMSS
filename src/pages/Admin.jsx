@@ -10,8 +10,9 @@ const Admin = () => {
   const [message, setMessage] = useState('');
   
   // Estados para simulación de guardería
-  const [testGuarderiaId, setTestGuarderiaId] = useState(profile?.guarderiaId || 'GDR-001');
+  const [testGuarderiaCodigo, setTestGuarderiaCodigo] = useState(profile?.guarderiaCodigo || profile?.guarderiaId || 'GDR-001');
   const [testGuarderiaNombre, setTestGuarderiaNombre] = useState(profile?.guarderiaNombre || 'Guardería Ordinaria No. 1');
+  const [testTipoGuarderia, setTestTipoGuarderia] = useState(profile?.tipoGuarderia || 'Directa');
 
   const updateProfile = async (updates) => {
     if (!user?.uid) return;
@@ -19,15 +20,28 @@ const Admin = () => {
     try {
       const userRef = doc(db, 'usuarios', user.uid);
       
-      // Si el perfil no existe, lo creamos (setDoc con merge)
+      // Si estamos simulando el "vínculo oficial", también creamos/actualizamos la colección guarderias
+      if (updates.guarderiaCodigo || updates.tipoGuarderia) {
+        const gCodigo = updates.guarderiaCodigo || testGuarderiaCodigo;
+        const gRef = doc(db, 'guarderias', gCodigo);
+        await setDoc(gRef, {
+          guarderiaCodigo: gCodigo,
+          nombre: updates.guarderiaNombre || testGuarderiaNombre,
+          tipoGuarderia: updates.tipoGuarderia || testTipoGuarderia,
+          estatus: 'activa',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      // Si el perfil no existe, lo creamos
       await setDoc(userRef, {
         uid: user.uid,
         email: user.email,
         nombre: user.displayName || user.email.split('@')[0],
         activo: true,
         updatedAt: serverTimestamp(),
-        ...profile, // Mantener lo actual
-        ...updates    // Aplicar cambios
+        ...profile, 
+        ...updates    
       }, { merge: true });
       
       // Actualizar estado local
@@ -40,7 +54,7 @@ const Admin = () => {
       };
       setProfile(updatedProfile);
       
-      setMessage(`¡Perfil actualizado con éxito!`);
+      setMessage(`¡Perfil institucional actualizado con éxito!`);
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error("Error al actualizar perfil:", error);
@@ -111,13 +125,13 @@ const Admin = () => {
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-500">ID de Guardería (ID único)</label>
+                <label className="text-xs font-bold text-gray-500">Código de Guardería (ej: GDR-001)</label>
                 <input 
                   type="text" 
-                  value={testGuarderiaId} 
-                  onChange={(e) => setTestGuarderiaId(e.target.value)}
+                  value={testGuarderiaCodigo} 
+                  onChange={(e) => setTestGuarderiaCodigo(e.target.value)}
                   className="w-full p-2 mt-1 border border-gray-200 rounded-lg text-sm font-bold"
-                  placeholder="Ej. GDR-123"
+                  placeholder="Ej. GDR-001"
                 />
               </div>
               <div>
@@ -130,13 +144,26 @@ const Admin = () => {
                   placeholder="Ej. Guardería 001 Mérida"
                 />
               </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500">Tipo de Guardería</label>
+                <select 
+                  value={testTipoGuarderia} 
+                  onChange={(e) => setTestTipoGuarderia(e.target.value)}
+                  className="w-full p-2 mt-1 border border-gray-200 rounded-lg text-sm font-bold"
+                >
+                  <option value="Directa">Directa</option>
+                  <option value="Prestación indirecta">Prestación indirecta</option>
+                  <option value="Privada en transición">Privada en transición</option>
+                  <option value="Otra">Otra</option>
+                </select>
+              </div>
               <button 
-                onClick={() => updateProfile({ guarderiaId: testGuarderiaId, guarderiaNombre: testGuarderiaNombre })}
+                onClick={() => updateProfile({ guarderiaCodigo: testGuarderiaCodigo, guarderiaNombre: testGuarderiaNombre, tipoGuarderia: testTipoGuarderia })}
                 disabled={loading}
                 className="w-full py-2 bg-gray-800 text-white rounded-lg font-bold text-sm hover:bg-black transition flex items-center justify-center gap-2"
               >
                 {loading ? <RefreshCcw className="animate-spin" size={16} /> : <Save size={16} />}
-                Actualizar Guardería
+                Actualizar Datos Institucionales
               </button>
             </div>
           </div>

@@ -138,7 +138,8 @@ const Planeaciones = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-black bg-imss-gold text-white px-2 py-0.5 rounded uppercase">GDR {p.guarderiaNo || p.guarderia}</span>
+                      <span className="text-[10px] font-black bg-imss-gold text-white px-2 py-0.5 rounded uppercase">{p.guarderiaCodigo || p.guarderiaNo || p.guarderia}</span>
+                      <span className="text-[10px] font-bold bg-imss-green-dark/10 text-imss-green-dark px-2 py-0.5 rounded uppercase">{p.tipoGuarderia || 'Directa'}</span>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
                         p.estado === 'aprobado' ? 'bg-green-100 text-green-700' : 
                         p.estado === 'en_revision' ? 'bg-yellow-100 text-yellow-700' :
@@ -161,7 +162,7 @@ const Planeaciones = () => {
                     <Calendar size={16} className="text-imss-green-medium" />
                     <div className="flex flex-col">
                       <p className="font-bold text-gray-800">Sala: {p.salaGrupo || p.sala}</p>
-                      <p className="text-xs text-imss-green-dark font-medium">Guardería: {p.guarderiaNo} {p.guarderiaNombre ? `- ${p.guarderiaNombre}` : ''}</p>
+                      <p className="text-[10px] text-imss-green-dark font-medium uppercase tracking-tight">Cód: {p.guarderiaCodigo || p.guarderiaNo} | {p.guarderiaNombre}</p>
                     </div>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-1 ${

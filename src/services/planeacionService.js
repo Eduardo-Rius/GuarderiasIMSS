@@ -10,8 +10,26 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  arrayUnion
+  arrayUnion,
+  getDoc
 } from 'firebase/firestore';
+
+/**
+ * Obtiene la información oficial de una guardería.
+ */
+export const getGuarderiaInfo = async (guarderiaId) => {
+  try {
+    const docRef = doc(db, 'guarderias', guarderiaId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error al obtener info de guardería:", error);
+    return null;
+  }
+};
 
 /**
  * Guarda o actualiza una planeación en Firestore.
@@ -22,10 +40,11 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
 
   try {
     const docData = {
-      // Datos Generales
-      guarderiaNo: userProfile?.guarderiaId || data.guarderiaNo || "",
+      guarderiaCodigo: userProfile?.guarderiaCodigo || userProfile?.guarderiaId || data.guarderiaCodigo || data.guarderiaNo || "",
       guarderiaNombre: userProfile?.guarderiaNombre || data.guarderiaNombre || "",
-      tipoGuarderia: userProfile?.tipoGuarderia || data.tipoGuarderia || "Directa",
+      tipoGuarderia: data.tipoGuarderia || userProfile?.tipoGuarderia || "Directa",
+      tipoGuarderiaSnapshotFecha: new Date().toISOString(),
+      
       salaGrupo: data.salaGrupo || data.sala || "",
       fechaInicio: data.fechaInicio || data.periodoInicio || "",
       fechaFin: data.fechaFin || data.periodoFin || "",
@@ -48,13 +67,13 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
       evaluacionCriterios: data.evaluacionCriterios || [],
       complementarias: data.complementarias || [],
       
-      // Metadatos
+      // Metadatos de Autoría
       userId: user.uid,
       userEmail: user.email,
       creadoPorUid: user.uid,
       creadoPorNombre: userProfile?.nombre || user.displayName || user.email,
       creadoPorEmail: user.email,
-      guarderiaId: userProfile?.guarderiaId || "GDR-001",
+      guarderiaCodigo: userProfile?.guarderiaCodigo || userProfile?.guarderiaId || "GDR-001",
       estado: estado,
       updatedAt: serverTimestamp()
     };
@@ -160,7 +179,7 @@ export const getPlaneaciones = async (userProfile) => {
       // Directora ve todo lo de su guardería
       q = query(
         planeacionesRef,
-        where("guarderiaId", "==", userProfile.guarderiaId)
+        where("guarderiaCodigo", "==", userProfile.guarderiaCodigo || userProfile.guarderiaId)
       );
     } else if (userProfile.rol === 'supervisor') {
       // Supervisor ve todo

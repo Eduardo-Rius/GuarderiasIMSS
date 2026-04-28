@@ -12,6 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { getGuarderiaInfo } from '../services/planeacionService';
 
 const PlaneacionNueva = () => {
   const navigate = useNavigate();
@@ -42,14 +43,29 @@ const PlaneacionNueva = () => {
   });
 
   React.useEffect(() => {
-    if (profile) {
-      setFormData(prev => ({
-        ...prev,
-        guarderiaNo: profile.guarderiaId || '',
-        responsableDocente: profile.nombre || '',
-        tipoGuarderia: profile.tipoGuarderia || 'Directa'
-      }));
-    }
+    const fetchNurseryData = async () => {
+      if (profile) {
+        let officialType = profile.tipoGuarderia || 'Directa';
+        const gCodigo = profile.guarderiaCodigo || profile.guarderiaId;
+        
+        if (gCodigo) {
+          const info = await getGuarderiaInfo(gCodigo);
+          if (info && info.tipoGuarderia) {
+            officialType = info.tipoGuarderia;
+          }
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          guarderiaCodigo: gCodigo || '',
+          guarderiaNo: gCodigo || '',
+          responsableDocente: profile.nombre || '',
+          tipoGuarderia: officialType
+        }));
+      }
+    };
+    
+    fetchNurseryData();
   }, [profile]);
 
   const salas = [
@@ -158,32 +174,23 @@ const PlaneacionNueva = () => {
             <FileText size={20} />
             <h2>Datos Generales</h2>
           </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Guardería No. *</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Código de Guardería</label>
               <input 
                 type="text" 
-                name="guarderiaNo"
-                value={formData.guarderiaNo}
+                name="guarderiaCodigo"
+                value={formData.guarderiaCodigo || formData.guarderiaNo}
                 disabled={true}
                 className="w-full p-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md outline-none cursor-not-allowed font-bold"
               />
-              {profile?.guarderiaNombre && (
-                <p className="text-[10px] text-imss-green-dark font-bold mt-1 uppercase">Guardería: {profile.guarderiaNombre}</p>
-              )}
+              <div className="flex flex-col gap-0.5 mt-1">
+                <p className="text-[10px] text-imss-green-dark font-bold uppercase italic">Nombre: {profile?.guarderiaNombre || 'No asignado'}</p>
+                <p className="text-[10px] text-imss-gold font-bold uppercase italic">Tipo: {formData.tipoGuarderia}</p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Guardería</label>
-              <select 
-                name="tipoGuarderia"
-                value={formData.tipoGuarderia}
-                disabled={true}
-                className="w-full p-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md outline-none cursor-not-allowed"
-              >
-                <option value="Directa">Directa</option>
-                <option value="Prestación indirecta">Prestación indirecta</option>
-              </select>
-            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sala o Grupo *</label>
               <select 
@@ -197,6 +204,7 @@ const PlaneacionNueva = () => {
               </select>
               {errors.salaGrupo && <span className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.salaGrupo}</span>}
             </div>
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Inicio *</label>
@@ -220,6 +228,7 @@ const PlaneacionNueva = () => {
               </div>
               {errors.periodo && <span className="col-span-2 text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12}/> {errors.periodo}</span>}
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Turno</label>
               <div className="flex gap-4 mt-2">
@@ -231,7 +240,8 @@ const PlaneacionNueva = () => {
                 </label>
               </div>
             </div>
-            <div>
+
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Responsable Docente *</label>
               <input 
                 type="text" 

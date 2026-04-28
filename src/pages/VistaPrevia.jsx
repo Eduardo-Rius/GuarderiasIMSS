@@ -504,7 +504,19 @@ const VistaPrevia = () => {
           </p>
           <div className="mt-3 flex items-center justify-between text-xs text-red-600 font-bold uppercase">
             <span>Revisado por: {docData.rechazadoPorNombre || 'Directora'}</span>
-            <span>Fecha: {docData.fechaRechazo ? (docData.fechaRechazo.toDate ? docData.fechaRechazo.toDate().toLocaleString() : new Date(docData.fechaRechazo).toLocaleString()) : ''}</span>
+            <span>
+              Fecha: {(() => {
+                const dateSource = docData.fechaRechazo || docData.updatedAt;
+                if (!dateSource) return 'Sin registro';
+                
+                try {
+                  const dateObj = dateSource.toDate ? dateSource.toDate() : new Date(dateSource);
+                  return isNaN(dateObj.getTime()) ? 'Sin registro' : dateObj.toLocaleString();
+                } catch (e) {
+                  return 'Sin registro';
+                }
+              })()}
+            </span>
           </div>
         </div>
       )}
@@ -575,9 +587,15 @@ const VistaPrevia = () => {
 
           {/* Tabla de Datos Generales */}
           <div className="grid grid-cols-1 md:grid-cols-2 border border-gray-300 rounded overflow-hidden">
-            <div className="border-b md:border-b-0 md:border-r border-gray-300 p-3 bg-gray-50">
-              <span className="text-[10px] font-bold text-gray-500 uppercase block">Guardería No.</span>
-              <p className="text-sm font-medium">{docData.guarderiaNo}</p>
+            <div className="border-b md:border-b-0 md:border-r border-gray-300 p-3 bg-gray-50 flex flex-col gap-1">
+              <div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase block">Código de Guardería</span>
+                <p className="text-sm font-black text-imss-green-dark">{docData.guarderiaCodigo || docData.guarderiaNo}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-gray-500 uppercase block">Tipo de Prestación</span>
+                <p className="text-xs font-medium text-imss-gold">{docData.tipoGuarderia || 'Directa'}</p>
+              </div>
             </div>
             <div className="p-3 bg-gray-50 border-b border-gray-300 md:border-b-0">
               <span className="text-[10px] font-bold text-gray-500 uppercase block">Sala de atención o grupo</span>
@@ -596,8 +614,8 @@ const VistaPrevia = () => {
               <p className="text-sm font-medium">{docData.turno}</p>
             </div>
             <div className="border-t border-l-0 md:border-l border-gray-300 p-3 bg-gray-50 col-span-1">
-              <span className="text-[10px] font-bold text-gray-500 uppercase block">Tipo de Guardería</span>
-              <p className="text-sm font-medium">{docData.tipoGuarderia}</p>
+              <span className="text-[10px] font-bold text-gray-500 uppercase block">Nombre de la Unidad</span>
+              <p className="text-[10px] font-bold uppercase text-imss-green-dark">{docData.guarderiaNombre || 'Nombre no registrado'}</p>
             </div>
           </div>
 
