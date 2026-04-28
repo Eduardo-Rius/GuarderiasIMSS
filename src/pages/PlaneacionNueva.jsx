@@ -11,10 +11,11 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { guardarPlaneacion } from '../services/planeacionService';
+import { useUser } from '../context/UserContext';
 
 const PlaneacionNueva = () => {
   const navigate = useNavigate();
+  const { profile } = useUser();
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [errors, setErrors] = useState({});
@@ -104,7 +105,7 @@ const PlaneacionNueva = () => {
     }
     setLoading(true);
     try {
-      await guardarPlaneacion(formData, 'borrador');
+      await guardarPlaneacion(formData, 'borrador', profile);
       alert('¡Borrador guardado exitosamente en Firestore!');
       navigate('/planeaciones');
     } catch (error) {

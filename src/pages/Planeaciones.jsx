@@ -17,28 +17,26 @@ import {
   Loader2
 } from 'lucide-react';
 
+import { useUser } from '../context/UserContext';
+
 const Planeaciones = () => {
   const [planeaciones, setPlaneaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterEstado, setFilterEstado] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const { profile } = useUser();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        fetchPlaneaciones(user.uid);
-      } else {
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (profile) {
+      fetchPlaneaciones(profile);
+    }
+  }, [profile]);
 
-  const fetchPlaneaciones = async (userId) => {
+  const fetchPlaneaciones = async (userProfile) => {
     setLoading(true);
     try {
-      const data = await getPlaneaciones(userId);
+      const data = await getPlaneaciones(userProfile);
       setPlaneaciones(data);
     } catch (error) {
       console.error("Error al cargar planeaciones:", error);
@@ -78,13 +76,15 @@ const Planeaciones = () => {
           <h1 className="text-2xl font-bold text-imss-green-dark">Mis Planeaciones</h1>
           <p className="text-gray-500">Gestiona y consulta tus formatos oficiales generados.</p>
         </div>
-        <button 
-          onClick={() => navigate('/planeacion')}
-          className="flex items-center gap-2 px-6 py-3 bg-imss-green-dark text-white rounded-lg font-bold hover:bg-imss-green-medium transition shadow-lg w-full md:w-auto justify-center"
-        >
-          <Plus size={20} />
-          Nueva Planeación
-        </button>
+        {profile?.rol !== 'supervisor' && (
+          <button 
+            onClick={() => navigate('/planeacion')}
+            className="flex items-center gap-2 px-6 py-3 bg-imss-green-dark text-white rounded-lg font-bold hover:bg-imss-green-medium transition shadow-lg w-full md:w-auto justify-center"
+          >
+            <Plus size={20} />
+            Nueva Planeación
+          </button>
+        )}
       </div>
 
       {/* Filtros y Búsqueda */}
@@ -181,7 +181,8 @@ const Planeaciones = () => {
                     >
                       <Eye size={18} />
                     </button>
-                    {(p.estado === 'borrador' || p.estado === 'rechazado' || !p.estado) && (
+                    
+                    {profile?.rol === 'docente' && (p.estado === 'borrador' || p.estado === 'rechazado' || !p.estado) && (
                       <button 
                         onClick={() => navigate('/preview', { state: { ...p, isEditingInitial: true } })}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" 
@@ -190,13 +191,16 @@ const Planeaciones = () => {
                         <Edit size={18} />
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleEliminar(p.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" 
-                      title="Eliminar"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+
+                    {profile?.rol === 'docente' && (p.estado === 'borrador') && (
+                      <button 
+                        onClick={() => handleEliminar(p.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" 
+                        title="Eliminar"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

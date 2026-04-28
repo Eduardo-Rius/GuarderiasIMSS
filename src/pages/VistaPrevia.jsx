@@ -24,10 +24,13 @@ import {
 import imssLogo from '../assets/imss_logo.svg';
 import LogoIMSS from '../components/LogoIMSS';
 import { guardarPlaneacion } from '../services/planeacionService';
+import { useUser } from '../context/UserContext';
+
 
 const VistaPrevia = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useUser();
   const [isEditing, setIsEditing] = useState(location.state?.isEditingInitial || false);
   const [docData, setDocData] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -290,7 +293,7 @@ const VistaPrevia = () => {
     setSaving(true);
     setMessage({ text: '', type: '' });
     try {
-      const savedId = await guardarPlaneacion(docData, estado);
+      const savedId = await guardarPlaneacion(docData, estado, profile);
       setDocData(prev => ({ ...prev, id: savedId, estado }));
       setMessage({ 
         text: `¡Planeación actualizada correctamente: ${estado.toUpperCase()}!`, 
@@ -320,8 +323,8 @@ const VistaPrevia = () => {
         </button>
         
         <div className="flex flex-wrap gap-2">
-          {/* Lógica de Edición - Solo permitida en borrador o rechazado */}
-          {(docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && (
+          {/* Lógica de Edición - Solo Docente en borrador o rechazado */}
+          {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && (
             !isEditing ? (
               <button 
                 onClick={() => setIsEditing(true)}
@@ -341,8 +344,8 @@ const VistaPrevia = () => {
             )
           )}
 
-          {/* Botón de Persistencia en Firebase (Guardar Borrador) */}
-          {(docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
+          {/* Botón de Persistencia (Guardar Borrador) - Solo Docente */}
+          {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('borrador')}
               disabled={saving}
@@ -353,8 +356,8 @@ const VistaPrevia = () => {
             </button>
           )}
 
-          {/* Botones de Flujo de Estado */}
-          {(docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
+          {/* Botones de Flujo de Estado - Solo Docente para Enviar */}
+          {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('en_revision')}
               disabled={saving}
@@ -365,8 +368,8 @@ const VistaPrevia = () => {
             </button>
           )}
 
-          {/* Botón de Aprobación - Simulamos que lo hace un supervisor */}
-          {docData.estado === 'en_revision' && (
+          {/* Botón de Aprobación - Solo Directora */}
+          {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
             <button 
               onClick={() => handlePersist('aprobado')}
               disabled={saving}
@@ -377,8 +380,8 @@ const VistaPrevia = () => {
             </button>
           )}
 
-          {/* Botón de Rechazo - Solo si está en revisión */}
-          {docData.estado === 'en_revision' && (
+          {/* Botón de Rechazo - Solo Directora */}
+          {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
             <button 
               onClick={() => handlePersist('rechazado')}
               disabled={saving}

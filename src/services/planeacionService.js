@@ -16,8 +16,9 @@ import {
  * Guarda o actualiza una planeación en Firestore.
  * @param {Object} data - Los datos de la planeación.
  * @param {string} estado - 'borrador', 'en_revision', 'aprobado', 'rechazado'.
+ * @param {Object} userProfile - El perfil del usuario (rol, guarderiaId, etc).
  */
-export const guardarPlaneacion = async (data, estado = 'borrador') => {
+export const guardarPlaneacion = async (data, estado = 'borrador', userProfile = null) => {
   const user = auth.currentUser;
   if (!user) throw new Error("No hay usuario autenticado");
 
@@ -52,6 +53,9 @@ export const guardarPlaneacion = async (data, estado = 'borrador') => {
       // Metadatos
       userId: user.uid,
       userEmail: user.email,
+      creadoPor: userProfile?.nombre || user.displayName || user.email,
+      creadoPorId: user.uid,
+      guarderiaId: userProfile?.guarderiaId || data.guarderiaId || "GDR-001",
       estado: estado,
       updatedAt: serverTimestamp()
     };
@@ -89,15 +93,32 @@ export const actualizarEstadoPlaneacion = async (id, nuevoEstado) => {
 };
 
 /**
- * Obtiene las planeaciones de un usuario específico.
+ * Obtiene las planeaciones filtradas según el rol del usuario.
  */
-export const getPlaneaciones = async (userId) => {
+export const getPlaneaciones = async (userProfile) => {
+  if (!userProfile) return [];
+  
   try {
-    const q = query(
-      collection(db, "planeaciones"),
-      where("userId", "==", userId)
-      // orderBy("createdAt", "desc") // Requiere índice compuesto. Descomentar tras crear el índice en consola.
-    );
+    let q;
+    const planeacionesRef = collection(db, "planeaciones");
+
+    if (userProfile.rol === 'docente') {
+      // Docente solo ve lo suyo
+      q = query(
+        planeacionesRef,
+        where("userId", "==", userProfile.uid)
+      );
+    } else if (userProfile.rol === 'directora') {
+      // Directora ve todo lo de su guardería
+      q = query(
+        planeacionesRef,
+        where("guarderiaId", "==", userProfile.guarderiaId)
+      );
+    } else if (userProfile.rol === 'supervisor') {
+      // Supervisor ve todo
+      q = query(planeacionesRef);
+    }
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
