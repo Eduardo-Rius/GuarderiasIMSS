@@ -50,7 +50,10 @@ const PlaneacionNueva = () => {
     referentes: [],
     materiales: [],
     evaluacionCriterios: [],
-    complementarias: []
+    complementarias: [],
+    // Metadatos de generación
+    lastGeneratedAt: null,
+    generatedVersion: 0
   });
 
   useEffect(() => {
@@ -84,7 +87,9 @@ const PlaneacionNueva = () => {
           referentes: data.referentes || [],
           materiales: data.materiales || [],
           evaluacionCriterios: data.evaluacionCriterios || [],
-          complementarias: data.complementarias || []
+          complementarias: data.complementarias || [],
+          lastGeneratedAt: data.lastGeneratedAt || null,
+          generatedVersion: data.generatedVersion || 0
         });
         
         if (data.actividadesDetalladas?.length > 0) {
@@ -158,6 +163,13 @@ const PlaneacionNueva = () => {
   };
 
   const handleGenerateSuggestions = () => {
+    const hasActivities = formData.actividadesDetalladas?.length > 0;
+    
+    if (hasActivities) {
+      const confirmRegenerate = window.confirm("Esto reemplazará las actividades actuales. ¿Deseas continuar?");
+      if (!confirmRegenerate) return;
+    }
+
     console.log("Iniciando generación de sugerencias...");
     if (!validate()) {
       console.warn("Validación fallida para sugerencias:", errors);
@@ -210,7 +222,9 @@ const PlaneacionNueva = () => {
 
       setFormData(prev => ({
         ...prev,
-        ...nuevasSugerencias
+        ...nuevasSugerencias,
+        lastGeneratedAt: new Date().toISOString(),
+        generatedVersion: (prev.generatedVersion || 0) + 1
       }));
       
       setLoading(false);

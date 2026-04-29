@@ -59,7 +59,18 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
       rangoEdad: data.rangoEdad || "",
       hayDiscapacidad: data.hayDiscapacidad || "No",
       descripcionNecesidades: data.descripcionNecesidades || "",
-      observaciones: data.observaciones || "",
+      observaciones: data.observacionesGrupo || data.observaciones || "",
+      
+      // Enfoque y Seguridad
+      enfoques: data.enfoques || [],
+      restriccionesMateriales: data.restriccionesMateriales || "",
+      consideracionesSalud: data.consideracionesSalud || "",
+      consideracionesAlimentacion: data.consideracionesAlimentacion || "",
+      notasSeguridad: data.notasSeguridad || "",
+      
+      // Metadatos de IA
+      lastGeneratedAt: data.lastGeneratedAt || null,
+      generatedVersion: data.generatedVersion || 0,
       
       // Pedagogía
       referentes: data.referentes || [],

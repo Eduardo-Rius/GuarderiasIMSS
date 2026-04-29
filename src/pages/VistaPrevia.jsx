@@ -174,9 +174,17 @@ const VistaPrevia = () => {
   };
 
   const handlePersist = async (estado) => {
-    if (estado === 'en_revision' && (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0)) {
-      alert("No puedes enviar a revisión una planeación sin actividades pedagógicas. Por favor, genera las sugerencias primero.");
-      return;
+    if (estado === 'en_revision') {
+      const missingFields = [];
+      if (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0) missingFields.push("Actividades Pedagógicas");
+      if (!docData.salaGrupo) missingFields.push("Sala/Grupo");
+      if (!docData.fechaInicio || !docData.fechaFin) missingFields.push("Periodo (Inicio/Fin)");
+      if (!docData.responsableDocente) missingFields.push("Responsable");
+
+      if (missingFields.length > 0) {
+        alert("Completa la planeación y genera sugerencias antes de enviarla a revisión. Faltan: " + missingFields.join(", "));
+        return;
+      }
     }
     setSaving(true);
     setMessage({ text: '', type: '' });
@@ -242,7 +250,7 @@ const VistaPrevia = () => {
           </div>
           <div>
             <p className="font-bold">Acción Requerida</p>
-            <p className="text-sm">Esta planeación aún no tiene actividades generadas. Puedes completar la captura y generar sugerencias antes de enviarla a revisión.</p>
+            <p className="text-sm">Esta planeación aún no tiene actividades generadas. Completa la planeación y genera sugerencias antes de enviarla a revisión.</p>
           </div>
         </div>
       )}
@@ -301,9 +309,9 @@ const VistaPrevia = () => {
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('en_revision')}
-              disabled={saving || (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0)}
+              disabled={saving || (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0) || !docData.salaGrupo || !docData.fechaInicio || !docData.fechaFin}
               className={`h-10 flex items-center gap-2 px-4 rounded-xl transition-all font-bold shadow-md whitespace-nowrap text-sm ${
-                (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0) 
+                (saving || !docData.actividadesDetalladas?.length || !docData.salaGrupo || !docData.fechaInicio) 
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                 : 'bg-[#bd965c] text-white hover:bg-[#a68450]'
               }`}
@@ -485,6 +493,18 @@ const VistaPrevia = () => {
             </div>
           </div>
 
+          {/* Enfoques Pedagógicos Badges */}
+          {docData.enfoques && docData.enfoques.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase w-full">Enfoques Prioritarios:</span>
+              {docData.enfoques.map((e, i) => (
+                <span key={i} className="text-[10px] bg-imss-green-dark/10 text-imss-green-dark px-2 py-0.5 rounded-full border border-imss-green-dark/20 font-bold uppercase">
+                  {e}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* 1. Referentes Curriculares */}
           <section className="break-inside-avoid">
             <h3 className="text-sm font-bold bg-imss-green-dark text-white px-3 py-1 mb-3">1. REFERENTES CURRICULARES</h3>
@@ -556,14 +576,39 @@ const VistaPrevia = () => {
             </div>
           </section>
 
-          {/* 4. Materiales */}
+          {/* 4. Materiales y Seguridad */}
           <section className="break-inside-avoid">
-            <h3 className="text-sm font-bold bg-imss-green-dark text-white px-3 py-1 mb-3 uppercase">4. Materiales</h3>
-            <div className="p-4 border border-gray-200 rounded text-sm text-gray-700 bg-gray-50 space-y-3">
-              <p>{docData.suggestions?.materiales.join(', ') || 'Materiales básicos de la sala'}</p>
-              <div className="flex gap-2 p-3 bg-imss-gold/10 border-l-4 border-imss-gold text-[11px] italic text-gray-600 leading-tight">
-                <ShieldAlert size={16} className="text-imss-gold flex-shrink-0" />
-                <p>Los materiales deberán ser seguros, no tóxicos, adecuados a la edad del grupo y utilizados bajo supervisión del personal responsable.</p>
+            <h3 className="text-sm font-bold bg-imss-green-dark text-white px-3 py-1 mb-3 uppercase">4. Materiales y Seguridad</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 border border-gray-200 rounded text-sm text-gray-700 bg-gray-50 space-y-3">
+                <p className="font-bold text-xs text-gray-500 uppercase">Materiales Sugeridos:</p>
+                <p>{docData.materiales?.join(', ') || 'Materiales básicos de la sala'}</p>
+                {docData.restriccionesMateriales && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="font-bold text-xs text-red-600 uppercase">Restricciones:</p>
+                    <p className="text-xs italic">{docData.restriccionesMateriales}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 border border-gray-200 rounded text-sm text-gray-700 bg-amber-50/30 space-y-3">
+                <p className="font-bold text-xs text-amber-700 uppercase flex items-center gap-1">
+                  <ShieldAlert size={14} /> Consideraciones de Seguridad y Salud:
+                </p>
+                <div className="space-y-2 text-xs">
+                  {docData.consideracionesSalud && (
+                    <p><strong>Salud:</strong> {docData.consideracionesSalud}</p>
+                  )}
+                  {docData.consideracionesAlimentacion && (
+                    <p><strong>Alimentación:</strong> {docData.consideracionesAlimentacion}</p>
+                  )}
+                  {docData.notasSeguridad && (
+                    <p><strong>Notas:</strong> {docData.notasSeguridad}</p>
+                  )}
+                  {!docData.consideracionesSalud && !docData.consideracionesAlimentacion && !docData.notasSeguridad && (
+                    <p className="italic text-gray-400 text-[11px]">No se registraron consideraciones especiales de seguridad.</p>
+                  )}
+                </div>
               </div>
             </div>
           </section>
