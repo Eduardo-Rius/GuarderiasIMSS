@@ -73,7 +73,6 @@ export const guardarPlaneacion = async (data, estado = 'borrador', userProfile =
       creadoPorUid: user.uid,
       creadoPorNombre: userProfile?.nombre || user.displayName || user.email,
       creadoPorEmail: user.email,
-      guarderiaCodigo: userProfile?.guarderiaCodigo || userProfile?.guarderiaId || "GDR-001",
       estado: estado,
       updatedAt: serverTimestamp()
     };

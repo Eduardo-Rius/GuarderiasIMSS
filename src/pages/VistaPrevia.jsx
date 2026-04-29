@@ -16,7 +16,10 @@ import {
   AlertCircle,
   Clock,
   Save,
-  Edit3
+  Edit3,
+  Settings,
+  LogOut,
+  RefreshCcw
 } from 'lucide-react';
 import imssLogo from '../assets/imss_logo.svg';
 import LogoIMSS from '../components/LogoIMSS';
@@ -171,6 +174,10 @@ const VistaPrevia = () => {
   };
 
   const handlePersist = async (estado) => {
+    if (estado === 'en_revision' && (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0)) {
+      alert("No puedes enviar a revisión una planeación sin actividades pedagógicas. Por favor, genera las sugerencias primero.");
+      return;
+    }
     setSaving(true);
     setMessage({ text: '', type: '' });
     try {
@@ -227,6 +234,18 @@ const VistaPrevia = () => {
 
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen pb-20">
+      {/* Alerta de Contenido Faltante */}
+      {profile?.rol === 'docente' && (docData.estado === 'borrador' || !docData.id) && (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0) && (
+        <div className="max-w-5xl mx-auto mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-800 rounded-r-xl shadow-sm flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <p className="font-bold">Acción Requerida</p>
+            <p className="text-sm">Esta planeación aún no tiene actividades generadas. Puedes completar la captura y generar sugerencias antes de enviarla a revisión.</p>
+          </div>
+        </div>
+      )}
       {showRejectModal && (
         <RejectionModal 
           onClose={() => setShowRejectModal(false)} 
@@ -247,23 +266,23 @@ const VistaPrevia = () => {
         <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto">
           {/* Lógica de Edición */}
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && (
-            !isEditing ? (
-              <button 
-                onClick={() => setIsEditing(true)}
-                className="h-10 flex items-center gap-2 px-4 bg-white border border-imss-green-dark text-imss-green-dark rounded-xl hover:bg-imss-green-dark hover:text-white transition-all font-bold shadow-sm whitespace-nowrap text-sm"
-              >
-                <Edit3 size={16} />
-                Editar
-              </button>
-            ) : (
-              <button 
-                onClick={handleSave}
-                className="h-10 flex items-center gap-2 px-4 bg-imss-green-medium text-white rounded-xl hover:bg-imss-green-dark transition-all font-bold shadow-md whitespace-nowrap text-sm"
-              >
-                <CheckCircle size={16} />
-                Aplicar Cambios
-              </button>
-            )
+            <button 
+              onClick={() => navigate('/planeacion', { state: { ...docData, isEditing: true } })}
+              className="h-10 flex items-center gap-2 px-4 bg-white border border-imss-green-dark text-imss-green-dark rounded-xl hover:bg-imss-green-dark hover:text-white transition-all font-bold shadow-sm whitespace-nowrap text-sm"
+            >
+              <Edit3 size={16} />
+              Editar Completo
+            </button>
+          )}
+
+          {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && (
+            <button 
+              onClick={() => navigate('/planeacion', { state: { ...docData, isEditing: true } })}
+              className="h-10 flex items-center gap-2 px-4 bg-white border border-imss-gold text-imss-gold rounded-xl hover:bg-imss-gold hover:text-white transition-all font-bold shadow-sm whitespace-nowrap text-sm"
+            >
+              <RefreshCcw size={16} />
+              {docData.actividadesDetalladas?.length > 0 ? 'Regenerar Sugerencias' : 'Generar Sugerencias'}
+            </button>
           )}
 
           {/* Botón Guardar Borrador */}
@@ -282,8 +301,12 @@ const VistaPrevia = () => {
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('en_revision')}
-              disabled={saving}
-              className="h-10 flex items-center gap-2 px-4 bg-[#bd965c] text-white rounded-xl hover:bg-[#a68450] transition-all font-bold shadow-md disabled:opacity-50 whitespace-nowrap text-sm"
+              disabled={saving || (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0)}
+              className={`h-10 flex items-center gap-2 px-4 rounded-xl transition-all font-bold shadow-md whitespace-nowrap text-sm ${
+                (!docData.actividadesDetalladas || docData.actividadesDetalladas.length === 0) 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-[#bd965c] text-white hover:bg-[#a68450]'
+              }`}
             >
               {saving ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
               Enviar a Revisión

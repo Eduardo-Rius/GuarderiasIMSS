@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FileText, 
   Users, 
@@ -9,19 +9,24 @@ import {
   Save, 
   ArrowRight,
   AlertCircle,
-  Loader2
+  Loader2,
+  RefreshCcw,
+  CheckCircle
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { getGuarderiaInfo, guardarPlaneacion } from '../services/planeacionService';
 
 const PlaneacionNueva = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useUser();
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
+    id: null,
+    estado: 'borrador',
     guarderiaNo: '',
     tipoGuarderia: 'Directa',
     salaGrupo: '',
@@ -39,12 +44,54 @@ const PlaneacionNueva = () => {
     restriccionesMateriales: '',
     consideracionesSalud: '',
     consideracionesAlimentacion: '',
-    notasSeguridad: ''
+    notasSeguridad: '',
+    // Campos de actividades para edición/regeneración
+    actividadesDetalladas: [],
+    referentes: [],
+    materiales: [],
+    evaluacionCriterios: [],
+    complementarias: []
   });
 
-  React.useEffect(() => {
-    const fetchNurseryData = async () => {
-      if (profile) {
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      // Si venimos de edición, cargar datos del state
+      if (location.state && (location.state.isEditing || location.state.id)) {
+        const data = location.state;
+        setFormData({
+          id: data.id || null,
+          estado: data.estado || 'borrador',
+          guarderiaNo: data.guarderiaCodigo || data.guarderiaNo || '',
+          guarderiaCodigo: data.guarderiaCodigo || data.guarderiaNo || '',
+          tipoGuarderia: data.tipoGuarderia || 'Directa',
+          salaGrupo: data.salaGrupo || data.sala || '',
+          fechaInicio: data.fechaInicio || data.periodoInicio || '',
+          fechaFin: data.fechaFin || data.periodoFin || '',
+          turno: data.turno || 'Matutino',
+          responsableDocente: data.responsableDocente || data.responsable || '',
+          numNinas: data.numNinas || '',
+          numNinos: data.numNinos || '',
+          rangoEdad: data.rangoEdad || '',
+          hayDiscapacidad: data.hayDiscapacidad || 'No',
+          descripcionNecesidades: data.descripcionNecesidades || '',
+          observacionesGrupo: data.observacionesGrupo || data.observaciones || '',
+          enfoques: data.enfoques || [],
+          restriccionesMateriales: data.restriccionesMateriales || '',
+          consideracionesSalud: data.consideracionesSalud || '',
+          consideracionesAlimentacion: data.consideracionesAlimentacion || '',
+          notasSeguridad: data.notasSeguridad || '',
+          actividadesDetalladas: data.actividadesDetalladas || [],
+          referentes: data.referentes || [],
+          materiales: data.materiales || [],
+          evaluacionCriterios: data.evaluacionCriterios || [],
+          complementarias: data.complementarias || []
+        });
+        
+        if (data.actividadesDetalladas?.length > 0) {
+          setShowSuggestions(true);
+        }
+      } else if (profile) {
+        // Carga normal para nueva planeación
         let officialType = profile.tipoGuarderia || 'Directa';
         const gCodigo = profile.guarderiaCodigo || profile.guarderiaId;
         
@@ -65,8 +112,8 @@ const PlaneacionNueva = () => {
       }
     };
     
-    fetchNurseryData();
-  }, [profile]);
+    fetchInitialData();
+  }, [profile, location.state]);
 
   const salas = [
     'Lactantes A', 'Lactantes B', 'Lactantes C',
@@ -97,17 +144,23 @@ const PlaneacionNueva = () => {
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.guarderiaNo) newErrors.guarderiaNo = 'Campo obligatorio';
+    const gCode = formData.guarderiaCodigo || formData.guarderiaNo;
+    if (!gCode) newErrors.guarderiaNo = 'Campo obligatorio';
     if (!formData.salaGrupo) newErrors.salaGrupo = 'Campo obligatorio';
     if (!formData.fechaInicio || !formData.fechaFin) newErrors.periodo = 'Fechas obligatorias';
     if (!formData.responsableDocente) newErrors.responsableDocente = 'Campo obligatorio';
     
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      alert("Por favor complete los campos obligatorios: " + Object.keys(newErrors).join(", "));
+    }
     return Object.keys(newErrors).length === 0;
   };
 
   const handleGenerateSuggestions = () => {
+    console.log("Iniciando generación de sugerencias...");
     if (!validate()) {
+      console.warn("Validación fallida para sugerencias:", errors);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -115,27 +168,80 @@ const PlaneacionNueva = () => {
     setLoading(true);
     // Simulación de "pensamiento" de IA
     setTimeout(() => {
+      // Mapear el mock a la estructura real del documento
+      const nuevasSugerencias = {
+        actividadesDetalladas: [
+          {
+            nombre: 'Circuito de obstáculos suaves',
+            proposito: 'Fomentar la motricidad gruesa y el equilibrio.',
+            desarrollo: 'Se colocarán colchonetas y túneles en el área central. Los niños deberán gatear o caminar sorteando los obstáculos.',
+            duracion: '20 min',
+            materiales: 'Colchonetas, túneles de tela',
+            seguridad: 'Asegurar área libre de objetos rígidos',
+            dimension: 'Motriz'
+          },
+          {
+            nombre: 'Taller de títeres emocional',
+            proposito: 'Estimular el lenguaje y reconocimiento de emociones.',
+            desarrollo: 'Uso de títeres para representar situaciones de alegría y calma. Interacción directa con los niños.',
+            duracion: '15 min',
+            materiales: 'Títeres de calcetín, teatrino',
+            seguridad: 'Sin piezas pequeñas desprendibles',
+            dimension: 'Lenguaje'
+          }
+        ],
+        referentes: [
+          'Establecer vínculos afectivos y apegos seguros',
+          'Construir una base de seguridad y confianza',
+          'Desarrollar autonomía y autorregulación',
+          'Desarrollar curiosidad y exploración'
+        ],
+        materiales: ['Colchonetas', 'Títeres', 'Túneles', 'Música suave'],
+        evaluacionCriterios: [
+          'Participación activa en el circuito',
+          'Interés en la interacción con títeres',
+          'Seguimiento de instrucciones sencillas'
+        ],
+        complementarias: [
+          { nombre: 'Lectura rítmica', descripcion: 'Lectura de cuentos con énfasis en sonidos.' },
+          { nombre: 'Juego libre', descripcion: 'Exploración de bloques de construcción.' }
+        ]
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        ...nuevasSugerencias
+      }));
+      
       setLoading(false);
       setShowSuggestions(true);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      setTimeout(() => {
+        const element = document.getElementById('suggestions-section');
+        if (element) element.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     }, 1500);
   };
 
   const handleContinue = () => {
-    navigate('/preview', { state: { ...formData, suggestions: suggestionsMock } });
+    navigate('/preview', { state: { ...formData } });
   };
 
   const handleSaveDraft = async () => {
+    console.log("Iniciando guardado de borrador con data:", formData);
     if (!validate()) {
+      console.warn("Validación fallida:", errors);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     setLoading(true);
     try {
-      await guardarPlaneacion(formData, 'borrador', profile);
-      alert('¡Borrador guardado exitosamente en Firestore!');
+      const savedId = await guardarPlaneacion(formData, 'borrador', profile);
+      console.log("Borrador guardado exitosamente. ID:", savedId);
+      setFormData(prev => ({ ...prev, id: savedId }));
+      alert(`¡Borrador ${formData.id ? 'actualizado' : 'guardado'} exitosamente!`);
       navigate('/planeaciones');
     } catch (error) {
+      console.error("Error al guardar borrador:", error);
       alert(`ERROR AL GUARDAR: ${error.message}`);
     } finally {
       setLoading(false);
@@ -363,16 +469,13 @@ const PlaneacionNueva = () => {
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Procesando sugerencias...
+                <Loader2 className="animate-spin h-5 w-5" />
+                Procesando...
               </span>
             ) : (
               <>
-                <Sparkles size={18} />
-                Generar sugerencias
+                {formData.actividadesDetalladas?.length > 0 ? <RefreshCcw size={18} /> : <Sparkles size={18} />}
+                {formData.actividadesDetalladas?.length > 0 ? 'Regenerar sugerencias' : 'Generar sugerencias'}
               </>
             )}
           </button>
@@ -380,12 +483,12 @@ const PlaneacionNueva = () => {
 
         {/* Suggestions Results (Simulated) */}
         {showSuggestions && (
-          <div className="mt-8 p-8 bg-green-50 border-2 border-imss-green-medium rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div id="suggestions-section" className="mt-8 p-8 bg-green-50 border-2 border-imss-green-medium rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-imss-green-dark p-2 rounded-lg text-white">
                 <Sparkles size={24} />
               </div>
-              <h2 className="text-2xl font-bold text-imss-green-dark">Sugerencias Generadas por IA</h2>
+              <h2 className="text-2xl font-bold text-imss-green-dark">Sugerencias {formData.actividadesDetalladas?.length > 2 ? 'Regeneradas' : 'Generadas'} por IA</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -395,9 +498,9 @@ const PlaneacionNueva = () => {
                   Actividades Sugeridas
                 </h3>
                 <ul className="space-y-3">
-                  {suggestionsMock.actividades.map((act, i) => (
+                  {formData.actividadesDetalladas.map((act, i) => (
                     <li key={i} className="text-gray-700 flex gap-2">
-                      <span className="text-imss-green-medium font-bold">•</span> {act}
+                      <span className="text-imss-green-medium font-bold">•</span> {act.nombre}: {act.proposito}
                     </li>
                   ))}
                 </ul>
@@ -409,7 +512,7 @@ const PlaneacionNueva = () => {
                   Materiales Recomendados
                 </h3>
                 <ul className="space-y-2">
-                  {suggestionsMock.materiales.map((mat, i) => (
+                  {formData.materiales.map((mat, i) => (
                     <li key={i} className="bg-white px-3 py-1 rounded-full text-sm text-imss-green-dark border border-imss-green-medium/20 inline-block mr-2 mb-2">
                       {mat}
                     </li>
@@ -420,11 +523,15 @@ const PlaneacionNueva = () => {
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 border-b border-imss-green-medium/30 pb-1">
                   <AlertCircle size={18} className="text-imss-green-medium" />
-                  Evaluación Sugerida
+                  Criterios de Evaluación
                 </h3>
-                <p className="text-gray-700 leading-relaxed italic">
-                  "{suggestionsMock.evaluacion}"
-                </p>
+                <ul className="space-y-1">
+                  {formData.evaluacionCriterios.map((crit, i) => (
+                    <li key={i} className="text-gray-700 flex gap-2 text-sm">
+                      <CheckCircle size={14} className="text-imss-green-medium mt-0.5" /> {crit}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               <div>
@@ -432,9 +539,13 @@ const PlaneacionNueva = () => {
                   <Sparkles size={18} className="text-imss-green-medium" />
                   Actividades Complementarias
                 </h3>
-                <p className="text-gray-700">
-                  {suggestionsMock.complementarias}
-                </p>
+                <ul className="space-y-2">
+                  {formData.complementarias.map((comp, i) => (
+                    <li key={i} className="text-gray-700 text-sm">
+                      <span className="font-bold">{comp.nombre}:</span> {comp.descripcion}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
 

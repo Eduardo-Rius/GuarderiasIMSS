@@ -213,7 +213,7 @@ const Planeaciones = () => {
                     
                     {profile?.rol === 'docente' && (p.estado === 'borrador' || p.estado === 'rechazado' || !p.estado) && (
                       <button 
-                        onClick={() => navigate('/preview', { state: { ...p, isEditingInitial: true } })}
+                        onClick={() => navigate('/planeacion', { state: { ...p, isEditing: true } })}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" 
                         title="Editar"
                       >
