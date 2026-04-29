@@ -12,7 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { getGuarderiaInfo } from '../services/planeacionService';
+import { getGuarderiaInfo, guardarPlaneacion } from '../services/planeacionService';
 
 const PlaneacionNueva = () => {
   const navigate = useNavigate();

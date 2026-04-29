@@ -1,6 +1,5 @@
+import html2pdf from 'html2pdf.js';
 import React, { useState, useEffect, useRef } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -163,170 +162,66 @@ const VistaPrevia = () => {
     );
   }
 
-  const handleDownloadPDF = async () => {
-    if (!documentRef.current) return;
-    
-    setGeneratingPDF(true);
-    setMessage({ text: 'Preparando paginación oficial (Carta)...', type: 'success' });
+  const limpiarTextoArchivo = (texto = "") => {
+    return texto
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
+  };
 
-    try {
-      const exportContainer = document.createElement('div');
-      exportContainer.className = 'pdf-export-container';
-      document.body.appendChild(exportContainer);
+  const descargarPDF = () => {
+    const elemento = document.getElementById("documento-planeacion");
 
-      // 1. Crear el contenido completo para medir
-      const fullContent = document.createElement('div');
-      fullContent.style.width = '196mm'; // Área útil (216 - 20)
-      fullContent.style.padding = '0';
-      
-      // Clonar el nodo original para manipularlo
-      const originalNode = documentRef.current;
-      const clonedNode = originalNode.cloneNode(true);
-      
-      // Sincronizar valores de inputs/textareas del original al clon
-      const originalInputs = originalNode.querySelectorAll('textarea, input');
-      const clonedInputs = clonedNode.querySelectorAll('textarea, input');
-      
-      originalInputs.forEach((originalEl, idx) => {
-        const value = originalEl.value;
-        const clonedEl = clonedInputs[idx];
-        if (clonedEl) {
-          const span = document.createElement('span');
-          span.textContent = value || '';
-          span.className = 'pdf-text-value';
-          clonedEl.parentNode.replaceChild(span, clonedEl);
-        }
-      });
-
-      // Eliminar botones y elementos innecesarios
-      const buttons = clonedNode.querySelectorAll('button');
-      buttons.forEach(b => b.remove());
-
-      fullContent.innerHTML = clonedNode.innerHTML;
-      exportContainer.appendChild(fullContent);
-
-      // 2. Medir bloques y paginar
-      const mmToPx = 3.78; 
-      const pageHeightMm = 250; // Un poco menos para dar margen
-      const pageHeightPx = pageHeightMm * mmToPx;
-
-      const headerBlock = fullContent.children[0];
-      const subHeaderBlock = fullContent.children[1];
-      const contentContainer = fullContent.children[2];
-      const contentBlocks = Array.from(contentContainer.children);
-
-      let pages = [[headerBlock, subHeaderBlock]];
-      let currentPageHeight = headerBlock.offsetHeight + subHeaderBlock.offsetHeight;
-
-      contentBlocks.forEach((block, idx) => {
-        const height = block.offsetHeight;
-        const isLastTwo = idx >= contentBlocks.length - 2;
-
-        if (isLastTwo && idx === contentBlocks.length - 2) {
-          const nextBlockHeight = contentBlocks[idx + 1].offsetHeight;
-          if (currentPageHeight + height + nextBlockHeight > pageHeightPx) {
-            pages.push([block]);
-            currentPageHeight = height;
-            return;
-          }
-        }
-
-        if (block.innerHTML.includes('Planeación de las acciones')) {
-          const sectionTitle = block.children[0];
-          const activitiesContainer = block.children[1];
-          const activities = Array.from(activitiesContainer.children);
-
-          if (currentPageHeight + sectionTitle.offsetHeight > pageHeightPx) {
-            pages.push([sectionTitle]);
-            currentPageHeight = sectionTitle.offsetHeight;
-          } else {
-            pages[pages.length - 1].push(sectionTitle);
-            currentPageHeight += sectionTitle.offsetHeight;
-          }
-
-          activities.forEach(act => {
-            if (currentPageHeight + act.offsetHeight > pageHeightPx) {
-              pages.push([act]);
-              currentPageHeight = act.offsetHeight;
-            } else {
-              pages[pages.length - 1].push(act);
-              currentPageHeight += act.offsetHeight;
-            }
-          });
-        } else {
-          if (currentPageHeight + height > pageHeightPx) {
-            pages.push([block]);
-            currentPageHeight = height;
-          } else {
-            pages[pages.length - 1].push(block);
-            currentPageHeight += height;
-          }
-        }
-      });
-
-      // 3. Renderizar páginas virtuales
-      exportContainer.innerHTML = '';
-      const totalPages = pages.length;
-
-      for (let i = 0; i < totalPages; i++) {
-        const pageDiv = document.createElement('div');
-        pageDiv.className = 'pdf-page';
-        
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'flex flex-col space-y-2'; 
-        pages[i].forEach(el => contentDiv.appendChild(el.cloneNode(true)));
-        
-        pageDiv.appendChild(contentDiv);
-
-        if (i === totalPages - 1) {
-          const footer = document.createElement('div');
-          footer.className = 'pdf-footer-block pdf-text-footer';
-          footer.innerHTML = `Este documento es para uso exclusivo del personal de Guarderías IMSS. Prohibida su reproducción total o parcial. | Generado: ${new Date().toLocaleDateString()}`;
-          pageDiv.appendChild(footer);
-        }
-
-        exportContainer.appendChild(pageDiv);
-      }
-
-      // 4. Capturar cada página
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'letter'
-      });
-
-      const pageElements = exportContainer.querySelectorAll('.pdf-page');
-      for (let i = 0; i < pageElements.length; i++) {
-        if (i > 0) pdf.addPage();
-        
-        const canvas = await html2canvas(pageElements[i], {
-          scale: 3.5,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          width: 216 * mmToPx,
-          height: 279 * mmToPx
-        });
-
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(imgData, 'PNG', 0, 0, 216, 279);
-      }
-
-      // 5. Finalizar
-      const date = new Date().toISOString().split('T')[0];
-      pdf.save(`Planeacion_IMSS_Carta_${docData.salaGrupo}_${date}.pdf`);
-      
-      document.body.removeChild(exportContainer);
-      setGeneratingPDF(false);
-      setMessage({ text: '¡PDF Carta generado con éxito!', type: 'success' });
-    } catch (error) {
-      console.error('Error al generar PDF:', error);
-      setMessage({ text: 'Error al generar el PDF institucional.', type: 'error' });
-      setGeneratingPDF(false);
-    } finally {
-      setGeneratingPDF(false);
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+    if (!elemento) {
+      alert("No se encontró el documento para generar el PDF.");
+      return;
     }
+
+    setGeneratingPDF(true);
+    setMessage({ text: 'Generando PDF institucional...', type: 'success' });
+
+    const salaLimpia = limpiarTextoArchivo(docData.salaGrupo || docData.sala || "Planeacion");
+    const fecha = new Date().toISOString().split("T")[0];
+    const nombreArchivo = `Planeacion_IMSS_${salaLimpia}_${fecha}.pdf`;
+
+    console.log("Nombre PDF generado:", nombreArchivo);
+
+    const opciones = {
+      margin: [8, 8, 8, 8],
+      filename: nombreArchivo,
+      image: { type: "jpeg", quality: 0.85 },
+      html2canvas: {
+        scale: 1.2,
+        useCORS: true,
+        logging: false
+      },
+      jsPDF: {
+        unit: "mm",
+        format: "a4",
+        orientation: "portrait",
+        compress: true
+      },
+      pagebreak: {
+        mode: ["avoid-all", "css", "legacy"]
+      }
+    };
+
+    html2pdf()
+      .set(opciones)
+      .from(elemento)
+      .save()
+      .then(() => {
+        setGeneratingPDF(false);
+        setMessage({ text: '¡PDF descargado con éxito!', type: 'success' });
+        setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      })
+      .catch(err => {
+        console.error('Error al generar PDF:', err);
+        setGeneratingPDF(false);
+        setMessage({ text: 'Error al generar el PDF.', type: 'error' });
+      });
   };
 
   const handleExportAlert = () => alert('Exportación a Word pendiente de integración.');
@@ -472,12 +367,12 @@ const VistaPrevia = () => {
             Word
           </button>
           <button 
-            onClick={handleDownloadPDF} 
+            onClick={descargarPDF} 
             disabled={generatingPDF}
             className="flex items-center gap-2 px-4 py-2 bg-imss-green-dark text-white rounded-lg hover:bg-imss-green-medium transition disabled:opacity-50"
           >
             {generatingPDF ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-            {generatingPDF ? 'Generando...' : 'PDF'}
+            {generatingPDF ? 'Generando...' : 'Descargar PDF'}
           </button>
         </div>
       </div>
@@ -523,8 +418,8 @@ const VistaPrevia = () => {
 
       {/* DOCUMENTO OFICIAL */}
       <div 
-        ref={documentRef}
-        className="max-w-5xl mx-auto bg-white shadow-2xl rounded-sm border border-gray-300 overflow-hidden font-sans text-gray-800"
+        id="documento-planeacion"
+        className="max-w-5xl mx-auto bg-white shadow-2xl rounded-sm border border-gray-300 overflow-hidden font-sans text-gray-800 pdf-document"
       >
         
         {/* Encabezado Institucional */}
