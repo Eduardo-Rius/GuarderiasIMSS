@@ -29,11 +29,11 @@ const MainLayout = () => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    { name: 'Nueva Planeación', path: '/planeacion', icon: <FilePlus size={20} /> },
+    { name: 'Nueva Planeación', path: '/planeacion', icon: <FilePlus size={20} />, roles: ['docente', 'directora'] },
     { name: 'Ver Planeaciones', path: '/planeaciones', icon: <Files size={20} /> },
     { name: 'Chat Normativo', path: '/chat', icon: <MessageSquare size={20} /> },
     { name: 'Administración', path: '/admin', icon: <Settings size={20} /> },
-  ];
+  ].filter(item => !item.roles || item.roles.includes(profile?.rol));
 
   return (
     <div className="flex h-screen bg-imss-bg text-imss-gray">

@@ -242,7 +242,7 @@ const PlaneacionNueva = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Responsable Docente *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Responsable *</label>
               <input 
                 type="text" 
                 name="responsableDocente"

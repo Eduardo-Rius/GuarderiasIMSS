@@ -13,7 +13,8 @@ const Dashboard = () => {
       title: 'Crear Planeación',
       description: 'Inicia un nuevo formato pedagógico siguiendo la normativa vigente.',
       icon: <FilePlus className="text-imss-green-dark" size={32} />,
-      path: '/planeacion'
+      path: '/planeacion',
+      roles: ['docente', 'directora']
     },
     {
       title: 'Consultar Normativa',
@@ -25,9 +26,10 @@ const Dashboard = () => {
       title: 'Ver Planeaciones',
       description: 'Revisa el historial de planeaciones creadas y sus estados de aprobación.',
       icon: <History className="text-imss-green-dark" size={32} />,
-      path: '/planeaciones'
+      path: '/planeaciones',
+      roles: ['docente', 'directora', 'supervisor']
     }
-  ];
+  ].filter(card => !card.roles || card.roles.includes(profile?.rol));
 
   return (
     <div className="p-8 max-w-7xl mx-auto">

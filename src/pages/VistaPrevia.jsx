@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -17,7 +16,6 @@ import {
   AlertCircle,
   Clock,
   Save,
-  Download,
   Edit3
 } from 'lucide-react';
 import imssLogo from '../assets/imss_logo.svg';
@@ -104,11 +102,11 @@ const VistaPrevia = () => {
           'Establecer vínculos afectivos y apegos seguros',
           'Construir una base de seguridad y confianza',
           'Desarrollar autonomía y autorregulación crecientes',
-          'Desarrollar curiosidad, exploración, imaginación y creatividad',
+          'Desarrollar curiosidad, exploración, imaginación and creatividad',
           'Acceder al lenguaje en un sentido pleno',
           'Descubrir libros y lectura',
           'Descubrir el propio cuerpo desde la libertad de movimiento',
-          'Convivir con otros y compartir el aprendizaje, juego, arte y cultura'
+          'Convivir con otros and compartir el aprendizaje, juego, arte y cultura'
         ],
         actividadesDetalladas: data.actividadesDetalladas || data.actividades || [
           {
@@ -162,69 +160,9 @@ const VistaPrevia = () => {
     );
   }
 
-  const limpiarTextoArchivo = (texto = "") => {
-    return texto
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9]/g, "_")
-      .replace(/_+/g, "_")
-      .replace(/^_|_$/g, "");
+  const imprimirPDF = () => {
+    window.print();
   };
-
-  const descargarPDF = () => {
-    const elemento = document.getElementById("documento-planeacion");
-
-    if (!elemento) {
-      alert("No se encontró el documento para generar el PDF.");
-      return;
-    }
-
-    setGeneratingPDF(true);
-    setMessage({ text: 'Generando PDF institucional...', type: 'success' });
-
-    const salaLimpia = limpiarTextoArchivo(docData.salaGrupo || docData.sala || "Planeacion");
-    const fecha = new Date().toISOString().split("T")[0];
-    const nombreArchivo = `Planeacion_IMSS_${salaLimpia}_${fecha}.pdf`;
-
-    console.log("Nombre PDF generado:", nombreArchivo);
-
-    const opciones = {
-      margin: [8, 8, 8, 8],
-      filename: nombreArchivo,
-      image: { type: "jpeg", quality: 0.85 },
-      html2canvas: {
-        scale: 1.2,
-        useCORS: true,
-        logging: false
-      },
-      jsPDF: {
-        unit: "mm",
-        format: "a4",
-        orientation: "portrait",
-        compress: true
-      },
-      pagebreak: {
-        mode: ["avoid-all", "css", "legacy"]
-      }
-    };
-
-    html2pdf()
-      .set(opciones)
-      .from(elemento)
-      .save()
-      .then(() => {
-        setGeneratingPDF(false);
-        setMessage({ text: '¡PDF descargado con éxito!', type: 'success' });
-        setTimeout(() => setMessage({ text: '', type: '' }), 3000);
-      })
-      .catch(err => {
-        console.error('Error al generar PDF:', err);
-        setGeneratingPDF(false);
-        setMessage({ text: 'Error al generar el PDF.', type: 'error' });
-      });
-  };
-
-  const handleExportAlert = () => alert('Exportación a Word pendiente de integración.');
 
   const handleSave = () => {
     setIsEditing(false);
@@ -259,6 +197,7 @@ const VistaPrevia = () => {
         ...prev, 
         estado: nuevoEstado, 
         motivoRechazo: nuevoEstado === 'rechazado' ? motivo : prev.motivoRechazo,
+        fechaRechazo: nuevoEstado === 'rechazado' ? new Date() : prev.fechaRechazo,
         updatedAt: new Date()
       }));
       setMessage({ 
@@ -274,6 +213,18 @@ const VistaPrevia = () => {
     }
   };
 
+  // Función para formatear fecha de forma consistente DD/MM/YYYY
+  const formatFriendlyDate = (dateSource) => {
+    if (!dateSource) return new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    try {
+      const dateObj = dateSource.toDate ? dateSource.toDate() : new Date(dateSource);
+      if (isNaN(dateObj.getTime())) return new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      return dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (e) {
+      return new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen pb-20">
       {showRejectModal && (
@@ -282,136 +233,133 @@ const VistaPrevia = () => {
           onConfirm={(motivo) => handleUpdateStatus('rechazado', motivo)} 
         />
       )}
-      {/* Barra de Herramientas Superior */}
-      <div className="max-w-5xl mx-auto mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+      {/* Barra de Herramientas Superior Ordenada */}
+      <div className="max-w-5xl mx-auto mb-8 flex flex-col lg:flex-row items-center justify-between gap-4 bg-white/50 p-4 rounded-2xl backdrop-blur-sm border border-white shadow-sm print:hidden">
         <button 
           onClick={() => navigate('/planeacion')}
-          className="flex items-center gap-1 text-imss-green-dark hover:underline font-medium"
+          className="flex items-center gap-2 text-imss-green-dark hover:bg-imss-green-dark/5 px-4 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={18} />
           Regresar a Nueva Planeación
         </button>
         
-        <div className="flex flex-wrap gap-2">
-          {/* Lógica de Edición - Solo Docente en borrador o rechazado */}
+        <div className="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto">
+          {/* Lógica de Edición */}
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && (
             !isEditing ? (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-imss-green-dark text-imss-green-dark rounded-lg hover:bg-green-50 transition"
+                className="h-10 flex items-center gap-2 px-4 bg-white border border-imss-green-dark text-imss-green-dark rounded-xl hover:bg-imss-green-dark hover:text-white transition-all font-bold shadow-sm whitespace-nowrap text-sm"
               >
-                <Edit3 size={18} />
+                <Edit3 size={16} />
                 Editar
               </button>
             ) : (
               <button 
                 onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 bg-imss-green-medium text-white rounded-lg hover:bg-imss-green-dark transition shadow-md"
+                className="h-10 flex items-center gap-2 px-4 bg-imss-green-medium text-white rounded-xl hover:bg-imss-green-dark transition-all font-bold shadow-md whitespace-nowrap text-sm"
               >
-                <CheckCircle size={18} />
+                <CheckCircle size={16} />
                 Aplicar Cambios
               </button>
             )
           )}
 
-          {/* Botón de Persistencia (Guardar Borrador) - Solo Docente */}
+          {/* Botón Guardar Borrador */}
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('borrador')}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-imss-green-dark text-white rounded-lg hover:opacity-90 transition shadow-md disabled:opacity-50"
+              className="h-10 flex items-center gap-2 px-4 bg-imss-green-dark text-white rounded-xl hover:opacity-90 transition-all font-bold shadow-md disabled:opacity-50 whitespace-nowrap text-sm"
             >
-              {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+              {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
               Guardar Borrador
             </button>
           )}
 
-          {/* Botones de Flujo de Estado - Solo Docente para Enviar */}
+          {/* Botón Enviar a Revisión */}
           {profile?.rol === 'docente' && (docData.estado === 'borrador' || docData.estado === 'rechazado' || !docData.id) && !isEditing && (
             <button 
               onClick={() => handlePersist('en_revision')}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-[#bd965c] text-white rounded-lg hover:bg-[#a68450] transition shadow-md disabled:opacity-50 font-bold"
+              className="h-10 flex items-center gap-2 px-4 bg-[#bd965c] text-white rounded-xl hover:bg-[#a68450] transition-all font-bold shadow-md disabled:opacity-50 whitespace-nowrap text-sm"
             >
-              {saving ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+              {saving ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
               Enviar a Revisión
             </button>
           )}
 
-          {/* Botón de Aprobación - Solo Directora */}
+          {/* Botones Directora */}
           {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
-            <button 
-              onClick={() => handleUpdateStatus('aprobado')}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-imss-green-medium text-white rounded-lg hover:bg-imss-green-dark transition shadow-md disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
-              Aprobar Planeación
-            </button>
+            <>
+              <button 
+                onClick={() => handleUpdateStatus('aprobado')}
+                disabled={saving}
+                className="h-10 flex items-center gap-2 px-4 bg-imss-green-medium text-white rounded-xl hover:bg-imss-green-dark transition-all font-bold shadow-md whitespace-nowrap text-sm"
+              >
+                {saving ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                Aprobar Planeación
+              </button>
+              <button 
+                onClick={() => setShowRejectModal(true)}
+                disabled={saving}
+                className="h-10 flex items-center gap-2 px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-bold shadow-md whitespace-nowrap text-sm"
+              >
+                <AlertCircle size={16} />
+                Rechazar
+              </button>
+            </>
           )}
 
-          {/* Botón de Rechazo - Solo Directora */}
-          {profile?.rol === 'directora' && docData.estado === 'en_revision' && (
-            <button 
-              onClick={() => setShowRejectModal(true)}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-md disabled:opacity-50"
-            >
-              <AlertCircle size={18} />
-              Rechazar
-            </button>
-          )}
-
-          <button onClick={handleExportAlert} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#bd965c] text-[#bd965c] font-bold rounded-lg hover:bg-yellow-50 transition shadow-sm">
-            <FileDown size={18} />
-            Word
-          </button>
+          {/* Botón Imprimir Siempre Visible */}
           <button 
-            onClick={descargarPDF} 
-            disabled={generatingPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-imss-green-dark text-white rounded-lg hover:bg-imss-green-medium transition disabled:opacity-50"
+            onClick={imprimirPDF}
+            className="h-10 flex items-center gap-2 px-4 bg-white border-2 border-imss-green-dark text-imss-green-dark rounded-xl hover:bg-imss-green-dark hover:text-white transition-all font-bold shadow-sm whitespace-nowrap text-sm"
           >
-            {generatingPDF ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-            {generatingPDF ? 'Generando...' : 'Descargar PDF'}
+            <Printer size={16} />
+            Imprimir / Guardar PDF
           </button>
         </div>
       </div>
 
       {/* Mensajes de feedback */}
       {message.text && (
-        <div className={`max-w-5xl mx-auto mb-4 p-4 rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
-          message.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+        <div className={`max-w-5xl mx-auto mb-6 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 shadow-sm ${
+          message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
         }`}>
-          {message.type === 'success' ? <CheckCircle size={20} /> : <ShieldAlert size={20} />}
+          {message.type === 'success' ? <CheckCircle size={22} className="text-green-600" /> : <ShieldAlert size={22} className="text-red-600" />}
           <p className="font-bold">{message.text}</p>
         </div>
       )}
 
-      {/* Motivo de Rechazo (Visible para Docente) */}
-      {docData.estado === 'rechazado' && docData.motivoRechazo && (
-        <div className="max-w-5xl mx-auto mb-6 bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-md animate-in slide-in-from-left duration-300">
-          <div className="flex items-center gap-3 mb-2 text-red-700">
-            <AlertCircle size={24} />
-            <h3 className="text-lg font-bold">Observaciones de la Dirección</h3>
+      {/* Motivo de Rechazo / Observaciones (Corregido) */}
+      {(docData.estado === 'rechazado' || docData.motivoRechazo) && (
+        <div className="max-w-5xl mx-auto mb-8 bg-red-50 border-l-[6px] border-red-500 p-6 rounded-r-2xl shadow-lg animate-in slide-in-from-left duration-500">
+          <div className="flex items-center gap-3 mb-4 text-red-800">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertCircle size={24} />
+            </div>
+            <h3 className="text-xl font-extrabold uppercase tracking-tight">Observaciones de la Dirección</h3>
           </div>
-          <p className="text-gray-800 bg-white/50 p-4 rounded-lg border border-red-100 italic">
-            "{docData.motivoRechazo}"
-          </p>
-          <div className="mt-3 flex items-center justify-between text-xs text-red-600 font-bold uppercase">
-            <span>Revisado por: {docData.rechazadoPorNombre || 'Directora'}</span>
-            <span>
-              Fecha: {(() => {
-                const dateSource = docData.fechaRechazo || docData.updatedAt;
-                if (!dateSource) return 'Sin registro';
-                
-                try {
-                  const dateObj = dateSource.toDate ? dateSource.toDate() : new Date(dateSource);
-                  return isNaN(dateObj.getTime()) ? 'Sin registro' : dateObj.toLocaleString();
-                } catch (e) {
-                  return 'Sin registro';
-                }
-              })()}
-            </span>
+          
+          <div className="bg-white/70 p-5 rounded-xl border border-red-100 mb-4 shadow-inner">
+            <p className="text-gray-800 text-lg italic leading-relaxed">
+              "{docData.motivoRechazo || 'Sin comentarios detallados.'}"
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-bold text-red-700/80">
+            <div className="flex items-center gap-2 bg-red-100/50 p-2 rounded-lg px-3">
+              <Users size={16} />
+              <span className="uppercase">Revisado por:</span>
+              <span className="text-red-900">{docData.rechazadoPorNombre || 'Directora de Guardería'}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-red-100/50 p-2 rounded-lg px-3">
+              <Clock size={16} />
+              <span className="uppercase">Fecha de revisión:</span>
+              <span className="text-red-900">{formatFriendlyDate(docData.fechaRechazo || docData.updatedAt)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -452,12 +400,12 @@ const VistaPrevia = () => {
           <div className="flex gap-4 items-center">
             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-600">
               <History size={12} />
-              <span>Creado: {docData.createdAt ? (docData.createdAt.toDate ? docData.createdAt.toDate().toLocaleDateString() : new Date(docData.createdAt).toLocaleDateString()) : 'Hoy'}</span>
+              <span>Creado: {docData.createdAt ? (docData.createdAt.toDate ? docData.createdAt.toDate().toLocaleDateString('es-MX') : new Date(docData.createdAt).toLocaleDateString('es-MX')) : 'Hoy'}</span>
             </div>
             {docData.updatedAt && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-600">
                 <Clock size={12} />
-                <span>Actualizado: {docData.updatedAt ? (docData.updatedAt instanceof Date ? docData.updatedAt.toLocaleDateString() : (docData.updatedAt.toDate ? docData.updatedAt.toDate().toLocaleDateString() : new Date(docData.updatedAt).toLocaleDateString())) : 'Sin actualización'}</span>
+                <span>Actualizado: {formatFriendlyDate(docData.updatedAt)}</span>
               </div>
             )}
           </div>
@@ -501,7 +449,7 @@ const VistaPrevia = () => {
               <p className="text-sm font-medium">{docData.fechaInicio} al {docData.fechaFin}</p>
             </div>
             <div className="border-t border-l-0 md:border-l border-gray-300 p-3 bg-white">
-              <span className="text-[10px] font-bold text-gray-500 uppercase block">Responsable Docente</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase block">Responsable</span>
               <p className="text-sm font-medium uppercase">{docData.responsableDocente}</p>
             </div>
             <div className="border-t border-gray-300 p-3 bg-gray-50 col-span-1">
@@ -627,7 +575,7 @@ const VistaPrevia = () => {
           <div className="pt-16 grid grid-cols-2 gap-20 px-10 break-inside-avoid">
             <div className="border-t border-gray-800 text-center pt-2">
               <p className="text-[10px] font-bold uppercase">{docData.responsableDocente}</p>
-              <p className="text-[10px] text-gray-500 uppercase">Firma del Responsable Docente</p>
+              <p className="text-[10px] text-gray-500 uppercase">Firma del Responsable</p>
             </div>
             <div className="border-t border-gray-800 text-center pt-2">
               <p className="text-[10px] text-gray-500 uppercase">Sello de la Guardería / Firma de Revisión</p>
