@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { getGuarderiaInfo, guardarPlaneacion } from '../services/planeacionService';
+import { generarSugerenciasPlaneacion } from '../services/n8nService';
 
 const PlaneacionNueva = () => {
   const navigate = useNavigate();
@@ -162,7 +163,7 @@ const PlaneacionNueva = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleGenerateSuggestions = () => {
+  const handleGenerateSuggestions = async () => {
     const hasActivities = formData.actividadesDetalladas?.length > 0;
     
     if (hasActivities) {
@@ -178,62 +179,66 @@ const PlaneacionNueva = () => {
     }
     
     setLoading(true);
-    // Simulación de "pensamiento" de IA
-    setTimeout(() => {
-      // Mapear el mock a la estructura real del documento
-      const nuevasSugerencias = {
-        actividadesDetalladas: [
-          {
-            nombre: 'Circuito de obstáculos suaves',
-            proposito: 'Fomentar la motricidad gruesa y el equilibrio.',
-            desarrollo: 'Se colocarán colchonetas y túneles en el área central. Los niños deberán gatear o caminar sorteando los obstáculos.',
-            duracion: '20 min',
-            materiales: 'Colchonetas, túneles de tela',
-            seguridad: 'Asegurar área libre de objetos rígidos',
-            dimension: 'Motriz'
-          },
-          {
-            nombre: 'Taller de títeres emocional',
-            proposito: 'Estimular el lenguaje y reconocimiento de emociones.',
-            desarrollo: 'Uso de títeres para representar situaciones de alegría y calma. Interacción directa con los niños.',
-            duracion: '15 min',
-            materiales: 'Títeres de calcetín, teatrino',
-            seguridad: 'Sin piezas pequeñas desprendibles',
-            dimension: 'Lenguaje'
-          }
-        ],
-        referentes: [
-          'Establecer vínculos afectivos y apegos seguros',
-          'Construir una base de seguridad y confianza',
-          'Desarrollar autonomía y autorregulación',
-          'Desarrollar curiosidad y exploración'
-        ],
-        materiales: ['Colchonetas', 'Títeres', 'Túneles', 'Música suave'],
-        evaluacionCriterios: [
-          'Participación activa en el circuito',
-          'Interés en la interacción con títeres',
-          'Seguimiento de instrucciones sencillas'
-        ],
-        complementarias: [
-          { nombre: 'Lectura rítmica', descripcion: 'Lectura de cuentos con énfasis en sonidos.' },
-          { nombre: 'Juego libre', descripcion: 'Exploración de bloques de construcción.' }
-        ]
-      };
+    
+    try {
+      // Llamada real a n8n
+      const nuevasSugerencias = await generarSugerenciasPlaneacion(formData, profile);
 
-      setFormData(prev => ({
-        ...prev,
+      const updatedFormData = {
+        ...formData,
         ...nuevasSugerencias,
         lastGeneratedAt: new Date().toISOString(),
-        generatedVersion: (prev.generatedVersion || 0) + 1
-      }));
-      
-      setLoading(false);
+        generatedVersion: (formData.generatedVersion || 0) + 1
+      };
+
+      setFormData(updatedFormData);
       setShowSuggestions(true);
+      
+      // Auto-guardado silencioso para persistir en Firebase (No bloqueante)
+      guardarPlaneacion(updatedFormData, 'borrador', profile)
+        .then(savedId => {
+          setFormData(prev => ({ ...prev, id: savedId }));
+          console.log("Borrador auto-guardado tras generación. ID:", savedId);
+        })
+        .catch(saveError => {
+          console.warn("Error en auto-guardado, pero las sugerencias están en memoria:", saveError);
+        });
+      
       setTimeout(() => {
         const element = document.getElementById('suggestions-section');
         if (element) element.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-    }, 1500);
+    } catch (error) {
+      console.warn("Falla en n8n, usando fallback local:", error);
+      
+      // Fallback local (simulación previa)
+      const mockFallback = {
+        actividadesDetalladas: [
+          {
+            nombre: 'Circuito de obstáculos suaves (Fallback)',
+            proposito: 'Fomentar la motricidad gruesa y el equilibrio.',
+            desarrollo: 'Se colocarán colchonetas y túneles en el área central.',
+            duracion: '20 min',
+            materiales: 'Colchonetas',
+            seguridad: 'Asegurar área libre',
+            dimension: 'Motriz'
+          }
+        ],
+        materiales: ['Materiales de la sala'],
+        evaluacionCriterios: ['Participación del grupo'],
+        complementarias: [{ nombre: 'Juego libre', descripcion: 'Exploración de bloques' }]
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        ...mockFallback,
+        lastGeneratedAt: new Date().toISOString(),
+        generatedVersion: (prev.generatedVersion || 0) + 1
+      }));
+      setShowSuggestions(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleContinue = () => {
@@ -484,7 +489,7 @@ const PlaneacionNueva = () => {
             {loading ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="animate-spin h-5 w-5" />
-                Procesando...
+                Generando sugerencias con IA...
               </span>
             ) : (
               <>
